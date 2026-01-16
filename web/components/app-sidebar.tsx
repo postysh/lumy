@@ -27,11 +27,6 @@ import {
 } from "@/components/ui/sidebar"
 
 const data = {
-  user: {
-    name: "Lumy",
-    email: "admin@lumy.local",
-    avatar: "/avatars/lumy.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -119,7 +114,20 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: {
+    id: string
+    email?: string
+  }
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const userForNav = {
+    name: user.email?.split('@')[0] || 'User',
+    email: user.email || 'user@lumy.local',
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`,
+  }
+
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
@@ -145,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userForNav} />
       </SidebarFooter>
     </Sidebar>
   )
