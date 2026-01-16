@@ -225,15 +225,31 @@ class LumyApp:
             await self.display_manager.display_image(image)
             logger.info(f"AP mode message displayed: {ap_ssid}")
             
-            # Start captive portal
-            logger.info("Starting captive portal...")
+            # Start captive portal server
+            logger.info("Starting captive portal web server...")
             import subprocess
-            subprocess.Popen(['sudo', 'systemctl', 'start', 'lumy-captive-portal'])
+            import threading
+            
+            def run_captive_portal():
+                """Run Flask captive portal in background thread"""
+                try:
+                    from src.captive_portal import run_portal
+                    run_portal(host='0.0.0.0', port=80)
+                except Exception as e:
+                    logger.error(f"Captive portal error: {e}")
+            
+            # Start captive portal in background thread
+            portal_thread = threading.Thread(target=run_captive_portal, daemon=True)
+            portal_thread.start()
+            logger.info("Captive portal running on http://192.168.4.1")
             
             # Keep running to serve the portal
             while True:
                 await asyncio.sleep(10)
                 # Check if WiFi connected (portal will reboot if successful)
+                if self.wifi_manager.is_connected():
+                    logger.info("WiFi connected! Rebooting...")
+                    subprocess.run(['sudo', 'reboot'])
             
         except Exception as e:
             logger.error(f"Error showing AP mode message: {e}", exc_info=True)

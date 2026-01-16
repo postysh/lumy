@@ -76,7 +76,7 @@ pip install --upgrade pip
 # Install all packages (gpiozero is system-installed with lgpio support)
 pip install RPi.GPIO spidev Pillow
 pip install bleak
-pip install fastapi uvicorn pydantic
+pip install fastapi uvicorn pydantic flask
 pip install pyyaml aiohttp psutil python-dotenv jinja2
 
 echo "✓ Python packages installed"
