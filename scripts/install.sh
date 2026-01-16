@@ -27,7 +27,7 @@ sudo apt-get upgrade -y
 echo "Installing Python and dependencies..."
 sudo apt-get install -y python3 python3-pip python3-venv
 sudo apt-get install -y python3-pil python3-numpy
-sudo apt-get install -y libopenjp2-7 libtiff5
+sudo apt-get install -y libopenjp2-7 libtiff6 || sudo apt-get install -y libtiff5 || true
 
 # Install system dependencies for Bluetooth
 echo "Installing Bluetooth dependencies..."
@@ -46,8 +46,12 @@ if [ -d "e-Paper" ]; then
 fi
 git clone https://github.com/waveshare/e-Paper.git
 cd e-Paper/RaspberryPi_JetsonNano/python
-sudo python3 setup.py install
+sudo pip3 install .
 cd ~
+
+# Verify installation
+echo "Verifying Waveshare library installation..."
+python3 -c "import waveshare_epd.epd7in3e; print('✓ Waveshare library installed successfully')" || echo "⚠ Warning: Waveshare library may not be installed correctly"
 
 # Create Python virtual environment
 echo "Setting up Python virtual environment..."
