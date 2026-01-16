@@ -137,9 +137,45 @@ rm -rf waveshare_epd_install
 echo ""
 
 #===========================================
-# STEP 6: Test Display (CRITICAL)
+# STEP 6: Create GPIO Cleanup Script (needed for display test)
 #===========================================
-echo "Step 6/10: Testing E-Paper display..."
+echo "Step 6/10: Creating GPIO cleanup script..."
+sudo tee /usr/local/bin/lumy-gpio-cleanup.sh > /dev/null <<'GPIOEOF'
+#!/bin/bash
+# GPIO cleanup - Waveshare troubleshooting
+# See: https://www.waveshare.com/wiki/7.3inch_e-Paper_HAT_(E)_Manual
+
+# Unexport all GPIO pins via sysfs (most reliable method)
+for pin in /sys/class/gpio/gpio*/; do
+    if [ -d "$pin" ]; then
+        pin_num=$(basename "$pin" | sed 's/gpio//')
+        echo "$pin_num" > /sys/class/gpio/unexport 2>/dev/null || true
+    fi
+done
+
+# Clean up via RPi.GPIO (secondary method)
+python3 << 'PYCLEANUP'
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.cleanup()
+except:
+    pass
+PYCLEANUP
+
+# Brief delay for cleanup to complete
+sleep 0.2
+GPIOEOF
+
+sudo chmod +x /usr/local/bin/lumy-gpio-cleanup.sh
+echo "✓ GPIO cleanup script created"
+echo ""
+
+#===========================================
+# STEP 7: Test Display (CRITICAL)
+#===========================================
+echo "Step 7/10: Testing E-Paper display..."
 cd "$LUMY_DIR/backend"
 
 # Run GPIO cleanup before display test
@@ -209,7 +245,7 @@ echo ""
 #===========================================
 # STEP 7: WiFi AP Mode Setup
 #===========================================
-echo "Step 7/10: Setting up WiFi AP mode..."
+echo "Step 8/10: Setting up WiFi AP mode..."
 
 # Stop services during configuration
 sudo systemctl stop hostapd 2>/dev/null || true
@@ -271,42 +307,6 @@ sudo systemctl disable hostapd 2>/dev/null || true
 sudo systemctl disable dnsmasq 2>/dev/null || true
 
 echo "✓ WiFi AP mode configured"
-echo ""
-
-#===========================================
-# STEP 8: GPIO Cleanup Script
-#===========================================
-echo "Step 8/10: Creating GPIO cleanup script..."
-sudo tee /usr/local/bin/lumy-gpio-cleanup.sh > /dev/null <<'GPIOEOF'
-#!/bin/bash
-# GPIO cleanup - Waveshare troubleshooting
-# See: https://www.waveshare.com/wiki/7.3inch_e-Paper_HAT_(E)_Manual
-
-# Unexport all GPIO pins via sysfs (most reliable method)
-for pin in /sys/class/gpio/gpio*/; do
-    if [ -d "$pin" ]; then
-        pin_num=$(basename "$pin" | sed 's/gpio//')
-        echo "$pin_num" > /sys/class/gpio/unexport 2>/dev/null || true
-    fi
-done
-
-# Clean up via RPi.GPIO (secondary method)
-python3 << 'PYCLEANUP'
-try:
-    import RPi.GPIO as GPIO
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
-    GPIO.cleanup()
-except:
-    pass
-PYCLEANUP
-
-# Brief delay for cleanup to complete
-sleep 0.2
-GPIOEOF
-
-sudo chmod +x /usr/local/bin/lumy-gpio-cleanup.sh
-echo "✓ GPIO cleanup script created"
 echo ""
 
 #===========================================
