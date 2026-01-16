@@ -96,20 +96,24 @@ cd "$LUMY_DIR/backend"
 python3 -m venv venv
 source venv/bin/activate
 
-# Install Python requirements
-echo "Installing Python packages..."
+# Install Python requirements (optimized for Pi)
+echo "Installing Python packages (this may take 5-10 minutes on Pi Zero)..."
 pip install --upgrade pip
-pip install -r requirements.txt
 
-# Install Node.js (for web dashboard)
-echo "Installing Node.js..."
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Install packages one by one for better progress visibility
+echo "  • Installing core packages..."
+pip install RPi.GPIO spidev Pillow
 
-# Setup web dashboard
-echo "Setting up web dashboard..."
-cd "$LUMY_DIR/web"
-npm install
+echo "  • Installing Bluetooth packages..."
+pip install bleak
+
+echo "  • Installing web framework..."
+pip install fastapi uvicorn pydantic
+
+echo "  • Installing utilities..."
+pip install pyyaml aiohttp psutil python-dotenv
+
+echo "✓ All Python packages installed"
 
 # Get the actual user (not root if using sudo)
 ACTUAL_USER="${SUDO_USER:-$USER}"
@@ -134,24 +138,27 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# Create .env file
+# Create .env file with production defaults (no user input needed)
 echo ""
 echo "==================================="
 echo "  Configuration"
 echo "==================================="
 echo ""
-echo "Enter your Vercel dashboard URL (or press Enter for default):"
-read -p "API URL [https://lumy-beta.vercel.app/api]: " API_URL
-API_URL=${API_URL:-https://lumy-beta.vercel.app/api}
 
-echo "Enter your API key (from Vercel environment variables):"
-read -p "API Key: " API_KEY
+# Use production API URL by default
+PRODUCTION_API_URL="https://lumy-beta.vercel.app/api"
+PRODUCTION_API_KEY="lumy-production-2026"
+
+echo "Using production configuration:"
+echo "  API URL: $PRODUCTION_API_URL"
+echo ""
 
 # Create .env file in the correct location
 cat > "$LUMY_DIR/backend/.env" << EOFENV
-# Lumy Configuration
-LUMY_API_URL=$API_URL
-LUMY_API_KEY=$API_KEY
+# Lumy Production Configuration
+# This device will auto-register on first boot
+LUMY_API_URL=$PRODUCTION_API_URL
+LUMY_API_KEY=$PRODUCTION_API_KEY
 
 # Device ID will be auto-generated on first run
 # LUMY_DEVICE_ID=
@@ -161,7 +168,7 @@ EOFENV
 # Change ownership to actual user
 sudo chown -R $ACTUAL_USER:$ACTUAL_USER "$LUMY_DIR"
 
-echo "✓ Configuration saved to $LUMY_DIR/backend/.env"
+echo "✓ Production configuration saved"
 
 # Enable and start service
 echo ""
@@ -177,17 +184,21 @@ echo "==================================="
 echo ""
 echo "✓ Lumy is now running as a system service"
 echo "✓ It will auto-start on every reboot"
+echo "✓ Display will show registration code on first boot"
 echo ""
-echo "Your display should now show a registration code!"
-echo ""
-echo "To register your device:"
-echo "  1. Visit: $API_URL"
-echo "  2. Sign in to your dashboard"
-echo "  3. Click 'Add Device' and enter the code shown on your display"
+echo "DEVICE SETUP FOR CUSTOMER:"
+echo "─────────────────────────────────────────"
+echo "1. Ship this device to your customer"
+echo "2. Customer powers on the device"
+echo "3. Display shows: 'Welcome to Lumy' + Code"
+echo "4. Customer visits: https://lumy-beta.vercel.app"
+echo "5. Customer signs in and clicks 'Add Device'"
+echo "6. Customer enters the code"
+echo "7. Done! Device is now registered to them"
 echo ""
 echo "Useful commands:"
 echo "  • View logs:      journalctl -u lumy -f"
 echo "  • Check status:   sudo systemctl status lumy"
 echo "  • Restart:        sudo systemctl restart lumy"
-echo "  • Stop:           sudo systemctl stop lumy"
+echo "  • Factory reset:  sudo bash scripts/factory-reset.sh"
 echo ""
