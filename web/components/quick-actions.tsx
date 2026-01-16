@@ -27,16 +27,16 @@ export function QuickActions({ onRefresh }: QuickActionsProps) {
   const actions = [
     {
       id: 'refresh',
-      label: 'Refresh Display',
+      label: 'Auto-Refresh: 60s',
       icon: RefreshCw,
-      onClick: () => handleAction('refresh', apiClient.refreshDisplay),
+      onClick: () => alert('Display refreshes automatically every 60 seconds. Cloud commands coming soon!'),
       variant: 'primary' as const,
     },
     {
-      id: 'clear',
-      label: 'Clear Display',
-      icon: Trash2,
-      onClick: () => handleAction('clear', apiClient.clearDisplay),
+      id: 'status',
+      label: 'Refresh Status',
+      icon: RefreshCw,
+      onClick: () => onRefresh(),
       variant: 'secondary' as const,
     },
   ]
