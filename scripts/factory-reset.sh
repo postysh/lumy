@@ -60,9 +60,29 @@ rm -f "$LUMY_DIR/backend/lumy.log"
 rm -f "$HOME/lumy.log"
 echo "✓ Cleared log files"
 
+# Clear the display to force refresh
+echo "Clearing display..."
+python3 << 'PYTHON_CLEAR'
+import sys
+sys.path.insert(0, '$LUMY_DIR/backend')
+try:
+    from waveshare_epd import epd7in3e
+    epd = epd7in3e.EPD()
+    epd.init()
+    epd.Clear()
+    epd.sleep()
+    print("✓ Display cleared")
+except Exception as e:
+    print(f"⚠ Could not clear display: {e}")
+PYTHON_CLEAR
+
 # Restart service
 echo "Starting Lumy service..."
 sudo systemctl start lumy.service
+
+# Wait for service to start and show welcome screen
+echo "Waiting for welcome screen to appear (this takes ~30 seconds)..."
+sleep 5
 
 echo ""
 echo "======================================"
