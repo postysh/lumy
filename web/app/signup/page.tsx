@@ -22,7 +22,7 @@ export default function SignupPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match")
+      setError("Passwords don&apos;t match")
       setLoading(false)
       return
     }
