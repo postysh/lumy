@@ -3,9 +3,15 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LUMY_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+
 echo "==================================="
 echo "  Lumy Installation Script"
 echo "==================================="
+echo ""
+echo "Installing from: $LUMY_DIR"
 echo ""
 
 # Check if running on Raspberry Pi
