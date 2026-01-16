@@ -63,6 +63,13 @@ class DisplayManager:
                     logger.error("Display not initialized")
                     return False
                 
+                # Wake up display if it was sleeping (re-init SPI connection)
+                try:
+                    self.epd.init()
+                    logger.debug("Display re-initialized for new image")
+                except Exception as init_error:
+                    logger.warning(f"Display init warning: {init_error}")
+                
                 # Ensure image is correct size
                 if image.size != (self.width, self.height):
                     logger.info(f"Resizing image from {image.size} to {self.width}x{self.height}")
