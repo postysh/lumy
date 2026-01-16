@@ -147,7 +147,7 @@ echo ""
 
 # Use production API URL by default
 PRODUCTION_API_URL="https://lumy-beta.vercel.app/api"
-PRODUCTION_API_KEY="lumy-production-2026"
+PRODUCTION_API_KEY="ZgIj4BaD25SyRVeQ9j0oh3ebpp0tQtgv"
 
 echo "Using production configuration:"
 echo "  API URL: $PRODUCTION_API_URL"
