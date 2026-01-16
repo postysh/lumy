@@ -7,7 +7,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ onDeviceAdded }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
+    <div className="flex flex-1 flex-col items-center justify-center p-8">
       <div className="max-w-md text-center space-y-6">
         {/* Icon */}
         <div className="flex justify-center">
