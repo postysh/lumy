@@ -77,30 +77,34 @@ except Exception as e:
     print(f"⚠ Could not clear display: {e}")
 PYTHON_CLEAR
 
-# Restart service
-echo "Starting Lumy service..."
+# Enable service to auto-start on boot, but don't start it now
+echo "Enabling Lumy service for auto-start..."
 sudo systemctl unmask lumy.service 2>/dev/null || true
 sudo systemctl enable lumy.service
-sudo systemctl start lumy.service
-
-# Wait for service to start and show welcome screen
-echo "Waiting for welcome screen to appear (this takes ~30 seconds)..."
-sleep 5
+echo "✓ Service will auto-start on next boot"
 
 echo ""
 echo "======================================"
 echo "  ✓ Factory Reset Complete"
 echo "======================================"
 echo ""
-echo "Device is ready for a new owner!"
+echo "✓ Display cleared (blank/white)"
+echo "✓ Device registration removed"
+echo "✓ Service configured for first boot"
 echo ""
-echo "The display will now show a new registration code."
-echo "Ship this device to your customer and they can:"
-echo "  1. Power it on"
-echo "  2. Visit: https://lumy-beta.vercel.app"
-echo "  3. Sign in and click 'Add Device'"
-echo "  4. Enter the code shown on the display"
+echo "📦 READY TO SHIP!"
 echo ""
-echo "To view the registration code:"
-echo "  journalctl -u lumy -f | grep -i 'code'"
+echo "Customer first-boot experience:"
+echo "  1. Power on device"
+echo "  2. Display shows: 'WiFi Setup Required'"
+echo "  3. Customer connects to 'Lumy-XXXXXX' WiFi"
+echo "  4. Browser opens automatically (captive portal)"
+echo "  5. Customer selects their WiFi and enters password"
+echo "  6. Device reboots automatically"
+echo "  7. Display shows: 'Welcome to Lumy' + Registration Code"
+echo "  8. Customer visits: https://lumy-beta.vercel.app"
+echo "  9. Customer signs in and adds device with code"
+echo ""
+echo "To test the flow now without shipping:"
+echo "  sudo reboot"
 echo ""
