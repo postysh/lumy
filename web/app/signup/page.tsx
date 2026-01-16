@@ -66,7 +66,7 @@ export default function SignupPage() {
             <div className="mb-4 text-6xl">✉️</div>
             <h2 className="text-2xl font-bold mb-4">Check Your Email</h2>
             <p className="text-muted-foreground mb-6">
-              We've sent you a confirmation link to <strong>{email}</strong>. 
+              We&apos;ve sent you a confirmation link to <strong>{email}</strong>. 
               Please check your inbox and click the link to verify your account.
             </p>
             <Button onClick={() => router.push('/login')} className="w-full">
