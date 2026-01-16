@@ -274,16 +274,30 @@ EOF
 
 # Configure hostapd
 sudo tee /etc/hostapd/hostapd.conf > /dev/null <<'EOF'
+# Interface and driver
 interface=wlan0
 driver=nl80211
+
+# Network settings
 ssid=Lumy-Setup
 hw_mode=g
-channel=7
-wmm_enabled=0
+channel=6
+ieee80211n=1
+ieee80211d=0
+country_code=US
+
+# Access point behavior
+wmm_enabled=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
+
+# Open network (no password for setup)
 wpa=0
+
+# QoS settings for better compatibility
+# wmm_ac_bk_cwmin=4
+# wmm_ac_bk_cwmax=10
 EOF
 
 sudo tee /etc/default/hostapd > /dev/null <<'EOF'
@@ -320,15 +334,18 @@ ExecStart=/usr/bin/bash -c '\
     systemctl stop wpa_supplicant 2>/dev/null || true; \
     systemctl unmask hostapd 2>/dev/null || true; \
     rfkill unblock wifi; \
-    sleep 1; \
+    sleep 2; \
     ip link set wlan0 down; \
+    sleep 1; \
     ip addr flush dev wlan0; \
+    iw dev wlan0 set type __ap; \
     ip addr add 192.168.4.1/24 dev wlan0; \
     ip link set wlan0 up; \
-    sleep 1; \
-    systemctl start hostapd; \
     sleep 2; \
+    systemctl start hostapd; \
+    sleep 3; \
     systemctl start dnsmasq; \
+    sleep 1; \
     echo "Lumy AP mode started"'
 ExecStop=/usr/bin/bash -c '\
     echo "Stopping Lumy AP mode..."; \
