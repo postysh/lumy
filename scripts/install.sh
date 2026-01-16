@@ -39,14 +39,39 @@ echo "Enabling SPI interface..."
 sudo raspi-config nonint do_spi 0
 
 # Install Waveshare E-Paper library
-echo "Installing Waveshare E-Paper library..."
-cd /tmp
-if [ -d "e-Paper" ]; then
-    rm -rf e-Paper
+echo "Installing Waveshare E-Paper library (optimized for Pi Zero)..."
+TMP_DIR="/tmp/waveshare_install_$$"
+mkdir -p "$TMP_DIR/waveshare_epd"
+cd "$TMP_DIR"
+
+BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python"
+
+echo "Downloading library files..."
+wget -q "$BASE_URL/setup.py" -O setup.py || echo "Warning: setup.py download failed"
+wget -q "$BASE_URL/lib/waveshare_epd/__init__.py" -O waveshare_epd/__init__.py
+wget -q "$BASE_URL/lib/waveshare_epd/epdconfig.py" -O waveshare_epd/epdconfig.py
+wget -q "$BASE_URL/lib/waveshare_epd/epd7in3e.py" -O waveshare_epd/epd7in3e.py
+
+# Create minimal setup.py if needed
+if [ ! -f setup.py ]; then
+    cat > setup.py << 'EOFSETUP'
+from setuptools import setup, find_packages
+setup(
+    name='waveshare-epd',
+    version='1.0',
+    packages=find_packages(),
+    install_requires=['Pillow', 'RPi.GPIO', 'spidev'],
+)
+EOFSETUP
 fi
-git clone --depth 1 https://github.com/waveshare/e-Paper.git
-cd e-Paper/RaspberryPi_JetsonNano/python
-sudo pip3 install .
+
+sudo pip3 install . --break-system-packages 2>/dev/null || sudo pip3 install . || {
+    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+    sudo cp -r waveshare_epd "$SITE_PACKAGES/"
+}
+
+cd /tmp
+rm -rf "$TMP_DIR"
 cd ~
 
 # Verify installation
