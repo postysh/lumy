@@ -19,19 +19,35 @@ class WiFiManager:
     def is_connected(self) -> bool:
         """Check if Pi is connected to WiFi"""
         try:
-            # Check for active WiFi connection
+            # Method 1: Check if wlan0 has an IP address (most reliable)
             result = subprocess.run(
-                ['iwgetid', '-r'],
+                ['ip', 'addr', 'show', 'wlan0'],
                 capture_output=True,
                 text=True,
                 timeout=5
             )
             
-            if result.returncode == 0 and result.stdout.strip():
-                logger.info(f"Connected to WiFi: {result.stdout.strip()}")
-                return True
+            if result.returncode == 0:
+                # Check if wlan0 has an inet (IPv4) address
+                if 'inet ' in result.stdout:
+                    logger.info("WiFi connected (wlan0 has IP address)")
+                    
+                    # Method 2: Try to get SSID name for logging
+                    try:
+                        ssid_result = subprocess.run(
+                            ['iwgetid', '-r'],
+                            capture_output=True,
+                            text=True,
+                            timeout=2
+                        )
+                        if ssid_result.returncode == 0 and ssid_result.stdout.strip():
+                            logger.info(f"Connected to SSID: {ssid_result.stdout.strip()}")
+                    except:
+                        pass  # SSID name is optional
+                    
+                    return True
             
-            logger.warning("Not connected to WiFi")
+            logger.warning("Not connected to WiFi (no IP on wlan0)")
             return False
             
         except Exception as e:
