@@ -78,7 +78,11 @@ class LumyApp:
                 logger.info("Device not registered - starting registration flow")
                 registered = await self.device_registration.initialize_and_register(self.display_manager)
                 
-                if not registered:
+                if registered:
+                    logger.info("Device successfully registered - showing success message")
+                    await self._show_registration_success(self.display_manager)
+                    await asyncio.sleep(3)  # Show success message for 3 seconds
+                else:
                     logger.error("Device registration failed or timed out")
                     # Continue anyway, allow manual configuration
             else:
@@ -233,6 +237,44 @@ class LumyApp:
             
         except Exception as e:
             logger.error(f"Error showing AP mode message: {e}", exc_info=True)
+    
+    async def _show_registration_success(self, display_manager):
+        """Show registration success message"""
+        from PIL import Image, ImageDraw, ImageFont
+        
+        try:
+            # Create white background
+            image = Image.new('RGB', (display_manager.width, display_manager.height), color=(255, 255, 255))
+            draw = ImageDraw.Draw(image)
+            
+            # Load fonts (sized for 800x480)
+            try:
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 52)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
+            except:
+                font_title = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+            
+            center_x = display_manager.width // 2
+            
+            # Draw success message
+            title_text = "Registration Successful!"
+            title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
+            title_width = title_bbox[2] - title_bbox[0]
+            draw.text((center_x - title_width // 2, 150), title_text, font=font_title, fill=(0, 150, 0))
+            
+            # Draw subtitle
+            subtitle_text = "Loading your widgets..."
+            subtitle_bbox = draw.textbbox((0, 0), subtitle_text, font=font_medium)
+            subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
+            draw.text((center_x - subtitle_width // 2, 250), subtitle_text, font=font_medium, fill=(0, 0, 0))
+            
+            # Display image
+            await display_manager.display_image(image)
+            logger.info("Registration success message displayed")
+            
+        except Exception as e:
+            logger.error(f"Error showing registration success: {e}", exc_info=True)
     
     async def shutdown(self):
         """Graceful shutdown"""

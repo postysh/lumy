@@ -36,6 +36,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDevices()
+    
+    // Poll for device status updates every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchDevices()
+    }, 5000)
+    
+    return () => clearInterval(intervalId)
   }, [])
 
   const handleDeviceAdded = () => {
