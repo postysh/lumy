@@ -6,6 +6,8 @@ Run this to verify your display is working correctly
 
 import sys
 import time
+import signal
+import atexit
 from PIL import Image, ImageDraw, ImageFont
 
 try:
@@ -26,6 +28,21 @@ def test_display():
         print("ERROR: Waveshare library not installed")
         print("Please run: sudo python3 scripts/install.sh")
         return False
+    
+    epd = None
+    
+    def cleanup():
+        """Cleanup GPIO on exit"""
+        if epd is not None:
+            try:
+                epd7in3e.epdconfig.module_exit()
+            except:
+                pass
+    
+    # Register cleanup handlers
+    atexit.register(cleanup)
+    signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+    signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
     
     try:
         # Initialize display
@@ -95,6 +112,11 @@ def test_display():
         epd.sleep()
         print("✓ Display sleep mode")
         
+        # Cleanup GPIO
+        print("Cleaning up GPIO...")
+        epd7in3e.epdconfig.module_exit()
+        print("✓ GPIO released")
+        
         print("")
         print("=================================")
         print("✓ All tests passed successfully!")
@@ -104,10 +126,24 @@ def test_display():
         
         return True
         
+    except KeyboardInterrupt:
+        print("\n✗ Test interrupted by user")
+        if epd is not None:
+            try:
+                epd7in3e.epdconfig.module_exit()
+            except:
+                pass
+        return False
+        
     except Exception as e:
         print(f"✗ Error: {e}")
         import traceback
         traceback.print_exc()
+        if epd is not None:
+            try:
+                epd7in3e.epdconfig.module_exit()
+            except:
+                pass
         return False
 
 if __name__ == "__main__":
