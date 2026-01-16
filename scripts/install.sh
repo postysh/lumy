@@ -32,7 +32,7 @@ sudo apt-get install -y libopenjp2-7 libtiff6 || sudo apt-get install -y libtiff
 # Install system dependencies for Bluetooth
 echo "Installing Bluetooth dependencies..."
 sudo apt-get install -y bluetooth bluez libbluetooth-dev
-sudo apt-get install -y libglib2.0-dev
+sudo apt-get install -y libglib2.0-dev libdbus-1-dev pkg-config
 
 # Enable SPI interface (required for E-Paper)
 echo "Enabling SPI interface..."
