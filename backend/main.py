@@ -174,10 +174,12 @@ class LumyApp:
                 font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 68)
                 font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 58)
                 font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 40)
+                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 30)
             except:
                 font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
             
             center_x = self.display_manager.width // 2
             
@@ -211,15 +213,20 @@ class LumyApp:
             draw.text((center_x - ssid_width // 2, box_y), ap_ssid, font=font_large, fill=(0, 100, 200))
             
             # More instructions
-            inst2 = "2. Open browser (auto-redirects)"
+            inst2 = "2. Open browser to: 192.168.4.1"
             inst2_bbox = draw.textbbox((0, 0), inst2, font=font_medium)
             inst2_width = inst2_bbox[2] - inst2_bbox[0]
-            draw.text((center_x - inst2_width // 2, 255), inst2, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst2_width // 2, 260), inst2, font=font_medium, fill=(0, 0, 0))
+            
+            inst2b = "(or wait for auto-redirect)"
+            inst2b_bbox = draw.textbbox((0, 0), inst2b, font=font_small)
+            inst2b_width = inst2b_bbox[2] - inst2b_bbox[0]
+            draw.text((center_x - inst2b_width // 2, 310), inst2b, font=font_small, fill=(100, 100, 100))
             
             inst3 = "3. Select WiFi & enter password"
             inst3_bbox = draw.textbbox((0, 0), inst3, font=font_medium)
             inst3_width = inst3_bbox[2] - inst3_bbox[0]
-            draw.text((center_x - inst3_width // 2, 300), inst3, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst3_width // 2, 365), inst3, font=font_medium, fill=(0, 0, 0))
             
             # Display image
             await self.display_manager.display_image(image)
