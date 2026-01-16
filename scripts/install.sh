@@ -41,7 +41,7 @@ echo ""
 #===========================================
 echo "Step 1/10: Installing system packages..."
 sudo apt-get update
-sudo apt-get install -y git build-essential
+sudo apt-get install -y git build-essential swig
 sudo apt-get install -y python3 python3-pip python3-venv python3-dev
 sudo apt-get install -y python3-pil python3-numpy
 sudo apt-get install -y libopenjp2-7 libtiff6 || true
