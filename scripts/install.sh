@@ -65,22 +65,34 @@ setup(
 EOFSETUP
 fi
 
-sudo pip3 install . --break-system-packages 2>/dev/null || sudo pip3 install . || {
+sudo pip3 install . --break-system-packages 2>/dev/null || {
+    echo "pip install failed, copying files directly..."
     SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
     sudo cp -r waveshare_epd "$SITE_PACKAGES/"
 }
 
 cd /tmp
 rm -rf "$TMP_DIR"
-cd ~
 
 # Verify installation
 echo "Verifying Waveshare library installation..."
 python3 -c "import waveshare_epd.epd7in3e; print('✓ Waveshare library installed successfully')" || echo "⚠ Warning: Waveshare library may not be installed correctly"
 
+# Determine the correct lumy directory path
+if [ -d "$HOME/lumy" ]; then
+    LUMY_DIR="$HOME/lumy"
+elif [ -d "/home/$SUDO_USER/lumy" ]; then
+    LUMY_DIR="/home/$SUDO_USER/lumy"
+else
+    echo "Error: Cannot find lumy directory"
+    exit 1
+fi
+
+echo "Using Lumy directory: $LUMY_DIR"
+
 # Create Python virtual environment
 echo "Setting up Python virtual environment..."
-cd ~/lumy/backend
+cd "$LUMY_DIR/backend"
 python3 -m venv venv
 source venv/bin/activate
 
@@ -96,8 +108,11 @@ sudo apt-get install -y nodejs
 
 # Setup web dashboard
 echo "Setting up web dashboard..."
-cd ~/lumy/web
+cd "$LUMY_DIR/web"
 npm install
+
+# Get the actual user (not root if using sudo)
+ACTUAL_USER="${SUDO_USER:-$USER}"
 
 # Create systemd service
 echo "Creating systemd service..."
@@ -108,10 +123,10 @@ After=network.target bluetooth.target
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=/home/$USER/lumy/backend
-Environment="PATH=/home/$USER/lumy/backend/venv/bin:/usr/bin"
-ExecStart=/home/$USER/lumy/backend/venv/bin/python3 main.py
+User=$ACTUAL_USER
+WorkingDirectory=$LUMY_DIR/backend
+Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
+ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
 Restart=always
 RestartSec=10
 
@@ -132,8 +147,8 @@ API_URL=${API_URL:-https://lumy-beta.vercel.app/api}
 echo "Enter your API key (from Vercel environment variables):"
 read -p "API Key: " API_KEY
 
-# Create .env file
-cat > ~/lumy/backend/.env << EOFENV
+# Create .env file in the correct location
+cat > "$LUMY_DIR/backend/.env" << EOFENV
 # Lumy Configuration
 LUMY_API_URL=$API_URL
 LUMY_API_KEY=$API_KEY
@@ -143,7 +158,10 @@ LUMY_API_KEY=$API_KEY
 # LUMY_USER_ID=
 EOFENV
 
-echo "✓ Configuration saved to ~/lumy/backend/.env"
+# Change ownership to actual user
+sudo chown -R $ACTUAL_USER:$ACTUAL_USER "$LUMY_DIR"
+
+echo "✓ Configuration saved to $LUMY_DIR/backend/.env"
 
 # Enable and start service
 echo ""

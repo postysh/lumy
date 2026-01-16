@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Monitor, Wifi, Grid3x3, Settings } from 'lucide-react'
 import {
   Breadcrumb,
@@ -16,10 +17,80 @@ import { StatusCard } from '@/components/status-card'
 import { WidgetList } from '@/components/widget-list'
 import { QuickActions } from '@/components/quick-actions'
 import { useSystemStatus } from '@/lib/hooks/use-system-status'
+import { EmptyState } from '@/components/empty-state'
+import { AddDeviceDialog } from '@/components/add-device-dialog'
 
 export default function DashboardPage() {
   const { data: status, isLoading, refetch } = useSystemStatus()
+  const [devices, setDevices] = useState<any[]>([])
+  const [loadingDevices, setLoadingDevices] = useState(true)
 
+  const fetchDevices = async () => {
+    try {
+      const response = await fetch('/api/devices')
+      if (response.ok) {
+        const data = await response.json()
+        setDevices(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch devices:', error)
+    } finally {
+      setLoadingDevices(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDevices()
+  }, [])
+
+  const handleDeviceAdded = () => {
+    fetchDevices()
+    refetch()
+  }
+
+  // Show loading state
+  if (loadingDevices) {
+    return (
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>Dashboard</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </SidebarInset>
+    )
+  }
+
+  // Show empty state if no devices
+  if (devices.length === 0) {
+    return (
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>Dashboard</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        <EmptyState onDeviceAdded={handleDeviceAdded} />
+      </SidebarInset>
+    )
+  }
+
+  // Show dashboard with devices
   return (
     <SidebarInset>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -32,6 +103,9 @@ export default function DashboardPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        <div className="ml-auto">
+          <AddDeviceDialog onDeviceAdded={handleDeviceAdded} />
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-4 p-6">
