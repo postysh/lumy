@@ -151,6 +151,89 @@ class LumyApp:
                 logger.error(f"Error in main loop: {e}", exc_info=True)
                 await asyncio.sleep(5)
     
+    async def _show_ap_mode_message(self):
+        """Show AP mode setup message on display"""
+        from PIL import Image, ImageDraw, ImageFont
+        
+        try:
+            # Start AP mode
+            ap_ssid = self.wifi_manager.start_ap_mode()
+            if not ap_ssid:
+                ap_ssid = "Lumy-Setup"
+            
+            # Create image for AP mode message
+            image = Image.new('RGB', (self.display_manager.width, self.display_manager.height), color=(255, 255, 255))
+            draw = ImageDraw.Draw(image)
+            
+            # Load fonts
+            try:
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 100)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 70)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 45)
+            except:
+                font_title = ImageFont.load_default()
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+            
+            center_x = self.display_manager.width // 2
+            
+            # Title
+            title_text = "WiFi Setup Required"
+            title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
+            title_width = title_bbox[2] - title_bbox[0]
+            draw.text((center_x - title_width // 2, 60), title_text, font=font_title, fill=(0, 0, 0))
+            
+            # Instructions
+            inst1 = "1. Connect to this WiFi:"
+            inst1_bbox = draw.textbbox((0, 0), inst1, font=font_medium)
+            inst1_width = inst1_bbox[2] - inst1_bbox[0]
+            draw.text((center_x - inst1_width // 2, 200), inst1, font=font_medium, fill=(0, 0, 0))
+            
+            # WiFi name (highlighted)
+            ssid_bbox = draw.textbbox((0, 0), ap_ssid, font=font_large)
+            ssid_width = ssid_bbox[2] - ssid_bbox[0]
+            ssid_height = ssid_bbox[3] - ssid_bbox[1]
+            
+            # Draw box around SSID
+            box_padding = 15
+            box_y = 270
+            draw.rectangle([
+                center_x - ssid_width // 2 - box_padding,
+                box_y - box_padding,
+                center_x + ssid_width // 2 + box_padding,
+                box_y + ssid_height + box_padding
+            ], outline=(0, 100, 200), width=5)
+            
+            draw.text((center_x - ssid_width // 2, box_y), ap_ssid, font=font_large, fill=(0, 100, 200))
+            
+            # More instructions
+            inst2 = "2. Open browser (auto-redirects)"
+            inst2_bbox = draw.textbbox((0, 0), inst2, font=font_medium)
+            inst2_width = inst2_bbox[2] - inst2_bbox[0]
+            draw.text((center_x - inst2_width // 2, 380), inst2, font=font_medium, fill=(0, 0, 0))
+            
+            inst3 = "3. Select WiFi & enter password"
+            inst3_bbox = draw.textbbox((0, 0), inst3, font=font_medium)
+            inst3_width = inst3_bbox[2] - inst3_bbox[0]
+            draw.text((center_x - inst3_width // 2, 435), inst3, font=font_medium, fill=(0, 0, 0))
+            
+            # Display image
+            await self.display_manager.display_image(image)
+            logger.info(f"AP mode message displayed: {ap_ssid}")
+            
+            # Start captive portal
+            logger.info("Starting captive portal...")
+            import subprocess
+            subprocess.Popen(['sudo', 'systemctl', 'start', 'lumy-captive-portal'])
+            
+            # Keep running to serve the portal
+            while True:
+                await asyncio.sleep(10)
+                # Check if WiFi connected (portal will reboot if successful)
+            
+        except Exception as e:
+            logger.error(f"Error showing AP mode message: {e}", exc_info=True)
+    
     async def shutdown(self):
         """Graceful shutdown"""
         logger.info("Shutting down Lumy...")
