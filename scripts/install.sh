@@ -120,16 +120,18 @@ cd /tmp/waveshare_epd_install
 pip install .
 
 # Verify (skip GPIO init check - will be handled by display manager)
-python3 << 'VERIFY' || {
-    echo "✗ Failed to install Waveshare library"
-    exit 1
-}
+python3 << 'VERIFY'
 import sys
 sys.path.insert(0, '/tmp/waveshare_epd_install')
 # Just verify the module can be imported
 import waveshare_epd
 print('✓ Waveshare library installed')
 VERIFY
+
+if [ $? -ne 0 ]; then
+    echo "✗ Failed to install Waveshare library"
+    exit 1
+fi
 
 deactivate
 
