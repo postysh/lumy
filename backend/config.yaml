@@ -4,7 +4,7 @@ display:
   width: 1872
   height: 1404
   rotation: 0
-  model: "epd_7in3e"  # Waveshare 7.3inch e-Paper HAT (E)
+  model: "epd7in3e"  # Waveshare 7.3inch e-Paper HAT (E)
   refresh_interval: 300  # seconds between automatic refreshes
   sleep_after_refresh: true
   partial_refresh: false  # Not supported on this model
