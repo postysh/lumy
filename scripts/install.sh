@@ -41,7 +41,7 @@ echo ""
 #===========================================
 echo "Step 1/10: Installing system packages..."
 sudo apt-get update
-sudo apt-get install -y git build-essential swig
+sudo apt-get install -y git build-essential
 sudo apt-get install -y python3 python3-pip python3-venv python3-dev
 sudo apt-get install -y python3-pil python3-numpy
 sudo apt-get install -y libopenjp2-7 libtiff6 || true
@@ -70,10 +70,8 @@ source venv/bin/activate
 echo "Step 4/10: Installing Python packages..."
 pip install --upgrade pip
 
-# Install all packages
+# Install all packages (use RPi.GPIO backend, no need for lgpio)
 pip install RPi.GPIO spidev Pillow
-# Install lgpio backend for gpiozero (required for newer Raspberry Pi OS)
-pip install rpi-lgpio
 pip install gpiozero colorzero
 pip install bleak
 pip install fastapi uvicorn pydantic
@@ -155,8 +153,8 @@ echo "  • Running display test..."
 python3 << 'DISPLAY_TEST'
 import sys
 import os
-# Force gpiozero to use lgpio pin factory
-os.environ['GPIOZERO_PIN_FACTORY'] = 'lgpio'
+# Force gpiozero to use RPi.GPIO backend (already installed)
+os.environ['GPIOZERO_PIN_FACTORY'] = 'rpigpio'
 
 try:
     from waveshare_epd import epd7in3e
@@ -328,7 +326,7 @@ Type=simple
 User=root
 WorkingDirectory=$LUMY_DIR/backend
 Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
-Environment="GPIOZERO_PIN_FACTORY=lgpio"
+Environment="GPIOZERO_PIN_FACTORY=rpigpio"
 ExecStartPre=/usr/local/bin/lumy-gpio-cleanup.sh
 ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
 Restart=always
@@ -355,8 +353,8 @@ cat > "$LUMY_DIR/backend/.env" << EOFENV
 LUMY_API_URL=$PRODUCTION_API_URL
 LUMY_API_KEY=$PRODUCTION_API_KEY
 
-# GPIO Configuration (use lgpio for newer Raspberry Pi OS)
-GPIOZERO_PIN_FACTORY=lgpio
+# GPIO Configuration (use RPi.GPIO backend for gpiozero)
+GPIOZERO_PIN_FACTORY=rpigpio
 
 # Device ID will be auto-generated on first run
 # LUMY_DEVICE_ID=
