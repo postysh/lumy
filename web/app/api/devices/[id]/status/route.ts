@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-// In-memory storage (replace with Supabase later)
-const deviceStatuses = new Map();
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 // GET - Retrieve device status
 export async function GET(
@@ -10,16 +13,35 @@ export async function GET(
 ) {
   const deviceId = params.id;
   
-  const status = deviceStatuses.get(deviceId) || {
-    device_id: deviceId,
-    status: 'offline',
-    last_refresh: null,
-    widgets: {},
-    system: {},
-    updated_at: null
-  };
-  
-  return NextResponse.json(status);
+  try {
+    const { data, error } = await supabase
+      .from('device_status')
+      .select('*')
+      .eq('device_id', deviceId)
+      .single();
+    
+    if (error || !data) {
+      return NextResponse.json({
+        device_id: deviceId,
+        status: 'offline',
+        last_refresh: null,
+        widgets: {},
+        system: {},
+        updated_at: null
+      });
+    }
+    
+    return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json({
+      device_id: deviceId,
+      status: 'offline',
+      last_refresh: null,
+      widgets: {},
+      system: {},
+      updated_at: null
+    });
+  }
 }
 
 // POST - Update device status
@@ -30,20 +52,30 @@ export async function POST(
   const deviceId = params.id;
   const body = await request.json();
   
-  // Store status in memory
-  const statusData = {
-    device_id: deviceId,
-    status: body.status,
-    last_refresh: body.last_refresh,
-    widgets: body.widgets || {},
-    system: body.system || {},
-    updated_at: new Date().toISOString()
-  };
-  
-  deviceStatuses.set(deviceId, statusData);
-  
-  // Log the status
-  console.log(`Device ${deviceId} status:`, body);
-  
-  return NextResponse.json({ success: true });
+  try {
+    const statusData = {
+      device_id: deviceId,
+      status: body.status,
+      last_refresh: body.last_refresh,
+      widgets: body.widgets || {},
+      system: body.system || {},
+      updated_at: new Date().toISOString()
+    };
+    
+    // Upsert status in Supabase
+    const { error } = await supabase
+      .from('device_status')
+      .upsert(statusData);
+    
+    if (error) {
+      console.error('Supabase error:', error);
+    } else {
+      console.log(`Device ${deviceId} status updated:`, body);
+    }
+    
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Error updating status:', err);
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+  }
 }
