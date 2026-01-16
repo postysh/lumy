@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 from PIL import Image, ImageDraw
@@ -31,19 +30,8 @@ class DisplayManager:
             model_name = self.config.get('display.model', 'epd_7in3e')
             
             try:
-                # Try to import Waveshare library
+                # Try to import Waveshare library (unmodified from official repo)
                 epd_module = importlib.import_module(f'waveshare_epd.{model_name}')
-                
-                # Manually initialize GPIO (patched library requires this)
-                try:
-                    from waveshare_epd import epdconfig
-                    # Force GPIO initialization if not already done
-                    output = os.popen('cat /proc/cpuinfo | grep Hardware').read()
-                    if "Raspberry" in output and not hasattr(epdconfig, 'implementation'):
-                        epdconfig.implementation = epdconfig.RaspberryPi()
-                except Exception as gpio_err:
-                    logger.warning(f"GPIO pre-init: {gpio_err}")
-                
                 self.epd = epd_module.EPD()
                 
                 logger.info(f"Initializing E-Paper display: {model_name}")

@@ -91,16 +91,11 @@ rm -rf waveshare_epd_install
 mkdir -p waveshare_epd_install/waveshare_epd
 cd waveshare_epd_install
 
-# Download library files directly
+# Download library files directly (unmodified from Waveshare)
 BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd"
 wget -q "$BASE_URL/__init__.py" -O waveshare_epd/__init__.py
 wget -q "$BASE_URL/epdconfig.py" -O waveshare_epd/epdconfig.py  
 wget -q "$BASE_URL/epd7in3e.py" -O waveshare_epd/epd7in3e.py
-
-# CRITICAL: Patch epdconfig.py to prevent GPIO initialization at import
-echo "Patching for GPIO compatibility..."
-# Replace line 313 with pass to avoid GPIO init at import time
-sed -i '313s/.*/    pass  # Deferred GPIO init/' waveshare_epd/epdconfig.py
 
 # Create minimal setup.py
 cat > setup.py << 'EOF'
@@ -147,6 +142,14 @@ echo ""
 echo "Step 6/10: Testing E-Paper display..."
 cd "$LUMY_DIR/backend"
 
+# Run GPIO cleanup before display test
+echo "  • Cleaning GPIO pins..."
+sudo /usr/local/bin/lumy-gpio-cleanup.sh
+
+# Activate venv for test
+source venv/bin/activate
+
+echo "  • Running display test..."
 python3 << 'DISPLAY_TEST'
 import sys
 try:
@@ -275,15 +278,30 @@ echo ""
 echo "Step 8/10: Creating GPIO cleanup script..."
 sudo tee /usr/local/bin/lumy-gpio-cleanup.sh > /dev/null <<'GPIOEOF'
 #!/bin/bash
-# Clean up GPIO pins before starting Lumy
+# Aggressive GPIO cleanup - Waveshare troubleshooting
+# See: https://www.waveshare.com/wiki/7.3inch_e-Paper_HAT_(E)_Manual
+
+# Clean up via RPi.GPIO
 python3 << 'PYCLEANUP'
 try:
     import RPi.GPIO as GPIO
+    GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.cleanup()
 except:
     pass
 PYCLEANUP
+
+# Unexport all GPIO pins directly via sysfs
+for pin in /sys/class/gpio/gpio*/; do
+    if [ -d "$pin" ]; then
+        pin_num=$(basename "$pin" | sed 's/gpio//')
+        echo "$pin_num" > /sys/class/gpio/unexport 2>/dev/null || true
+    fi
+done
+
+# Brief delay for cleanup to complete
+sleep 0.5
 GPIOEOF
 
 sudo chmod +x /usr/local/bin/lumy-gpio-cleanup.sh
