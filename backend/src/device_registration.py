@@ -109,19 +109,27 @@ class DeviceRegistration:
                 url = f"{api_url}/devices/{self.device_id}/registration"
                 headers = {"X-API-KEY": api_key}
                 
+                logger.debug(f"Checking registration status: {url}")
+                
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
+                        logger.debug(f"Registration check response: {data}")
+                        
                         if data.get('registered'):
                             self.is_registered = True
                             self.user_id = data.get('user_id')
-                            logger.info(f"Device is registered to user: {self.user_id}")
+                            logger.info(f"✓ Device is registered to user: {self.user_id}")
                             return True
+                        else:
+                            logger.debug(f"Device not yet registered (checked at {url})")
+                    else:
+                        logger.warning(f"Registration check failed with status: {response.status}")
             
             return False
             
         except Exception as e:
-            logger.error(f"Error checking registration status: {e}")
+            logger.error(f"Error checking registration status: {e}", exc_info=True)
             return False
     
     async def send_registration_code(self):
@@ -159,20 +167,25 @@ class DeviceRegistration:
     
     async def wait_for_registration(self, display_manager, timeout=3600):
         """Wait for device to be registered (poll every 5 seconds)"""
-        logger.info("Waiting for device registration...")
+        logger.info(f"Waiting for device registration (device_id: {self.device_id})...")
+        logger.info(f"Registration code: {self.registration_code}")
         
         start_time = datetime.now()
+        check_count = 0
         
         while (datetime.now() - start_time).seconds < timeout:
+            check_count += 1
+            logger.info(f"Registration check #{check_count} (elapsed: {(datetime.now() - start_time).seconds}s)")
+            
             # Check if registered
             if await self.check_registration_status():
-                logger.info("Device successfully registered!")
+                logger.info("✓ Device successfully registered!")
                 return True
             
             # Wait 5 seconds before checking again
             await asyncio.sleep(5)
         
-        logger.warning("Registration timeout - no registration received")
+        logger.warning(f"Registration timeout after {check_count} checks - no registration received")
         return False
     
     async def show_welcome_screen(self, display_manager):
