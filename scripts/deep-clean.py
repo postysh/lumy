@@ -7,8 +7,26 @@ This does multiple full refresh cycles to completely clear old images
 import sys
 import time
 
+# Add scripts directory to path
+sys.path.insert(0, '/home/lumy/lumy/scripts')
+
 print("E-Paper Deep Clean")
 print("==================")
+print()
+
+# Import helper for automatic GPIO cleanup
+try:
+    from epaper_helper import cleanup_gpio
+    cleanup_gpio()
+except ImportError:
+    print("⚠ Could not import helper, attempting manual cleanup...")
+    try:
+        from waveshare_epd import epdconfig
+        epdconfig.module_exit()
+        time.sleep(0.3)
+    except:
+        pass
+
 print()
 print("This will do multiple refresh cycles to remove ghosting")
 print("from the old InkyPi image. This will take 3-5 minutes.")

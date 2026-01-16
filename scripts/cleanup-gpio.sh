@@ -5,34 +5,28 @@ echo "GPIO Cleanup Script"
 echo "==================="
 echo ""
 
-# Kill any Python processes that might be using GPIO
-echo "Checking for running Python processes..."
-PYTHON_PIDS=$(pgrep -f "python.*test-display\|python.*main.py\|python.*lumy")
-if [ -n "$PYTHON_PIDS" ]; then
-    echo "Found Python processes using GPIO:"
-    ps -p $PYTHON_PIDS -o pid,cmd
-    echo ""
-    echo "Killing processes..."
-    sudo kill -9 $PYTHON_PIDS 2>/dev/null || true
-    sleep 1
-    echo "✓ Processes killed"
-else
-    echo "No Python processes found"
-fi
+# Kill ANY Python processes
+echo "Killing all Python processes..."
+sudo pkill -9 python3 2>/dev/null || true
+sudo pkill -9 python 2>/dev/null || true
+sleep 1
+echo "✓ Python processes killed"
 
-# Try to release GPIO using chip command if available
+# Force release GPIO chip
 echo ""
-echo "Releasing GPIO pins..."
-if command -v gpioinfo &> /dev/null; then
-    # Use modern GPIO tools if available
-    for chip in /dev/gpiochip*; do
-        if [ -e "$chip" ]; then
-            sudo gpioset --mode=exit $(basename $chip) 17=0 2>/dev/null || true
-        fi
-    done
+echo "Releasing GPIO chip..."
+if [ -e /dev/gpiochip0 ]; then
+    # Try to reset the GPIO chip
+    sudo python3 -c "
+try:
+    from waveshare_epd import epdconfig
+    epdconfig.module_exit()
+    print('✓ GPIO released via epdconfig')
+except:
+    pass
+" 2>/dev/null || true
 fi
 
 echo "✓ GPIO cleanup complete"
 echo ""
-echo "You can now run:"
-echo "  python3 scripts/test-display.py"
+echo "You can now run your script"
