@@ -45,6 +45,8 @@ sudo apt-get install -y git build-essential
 sudo apt-get install -y python3 python3-pip python3-venv python3-dev
 sudo apt-get install -y python3-pil python3-numpy
 sudo apt-get install -y libopenjp2-7 libtiff6 || true
+# GPIO libraries (lgpio is needed for modern Raspberry Pi OS)
+sudo apt-get install -y python3-lgpio python3-gpiozero
 sudo apt-get install -y bluetooth bluez libbluetooth-dev
 sudo apt-get install -y libglib2.0-dev libdbus-1-dev pkg-config
 sudo apt-get install -y hostapd dnsmasq
@@ -70,9 +72,8 @@ source venv/bin/activate
 echo "Step 4/10: Installing Python packages..."
 pip install --upgrade pip
 
-# Install all packages (use RPi.GPIO backend, no need for lgpio)
+# Install all packages (gpiozero is system-installed with lgpio support)
 pip install RPi.GPIO spidev Pillow
-pip install gpiozero colorzero
 pip install bleak
 pip install fastapi uvicorn pydantic
 pip install pyyaml aiohttp psutil python-dotenv jinja2
@@ -148,11 +149,11 @@ sudo /usr/local/bin/lumy-gpio-cleanup.sh
 
 echo "  • Running display test..."
 # MUST run as root for GPIO access
-sudo "$LUMY_DIR/backend/venv/bin/python3" << 'DISPLAY_TEST'
+sudo python3 << 'DISPLAY_TEST'
 import sys
 import os
-# Force gpiozero to use RPi.GPIO backend (already installed)
-os.environ['GPIOZERO_PIN_FACTORY'] = 'rpigpio'
+# Use system-installed lgpio (modern GPIO library)
+os.environ['GPIOZERO_PIN_FACTORY'] = 'lgpio'
 
 try:
     from waveshare_epd import epd7in3e
@@ -323,7 +324,7 @@ Type=simple
 User=root
 WorkingDirectory=$LUMY_DIR/backend
 Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
-Environment="GPIOZERO_PIN_FACTORY=rpigpio"
+Environment="GPIOZERO_PIN_FACTORY=lgpio"
 ExecStartPre=/usr/local/bin/lumy-gpio-cleanup.sh
 ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
 Restart=always
@@ -350,8 +351,8 @@ cat > "$LUMY_DIR/backend/.env" << EOFENV
 LUMY_API_URL=$PRODUCTION_API_URL
 LUMY_API_KEY=$PRODUCTION_API_KEY
 
-# GPIO Configuration (use RPi.GPIO backend for gpiozero)
-GPIOZERO_PIN_FACTORY=rpigpio
+# GPIO Configuration (use system lgpio library)
+GPIOZERO_PIN_FACTORY=lgpio
 
 # Device ID will be auto-generated on first run
 # LUMY_DEVICE_ID=
