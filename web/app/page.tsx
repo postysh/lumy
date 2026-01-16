@@ -28,25 +28,25 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatusCard
             title="Display Status"
-            value={status?.display?.initialized ? 'Online' : 'Offline'}
+            value={status?.status === 'online' ? 'Online' : 'Offline'}
             icon={<Monitor className="w-6 h-6" />}
-            status={status?.display?.initialized ? 'success' : 'error'}
+            status={status?.status === 'online' ? 'success' : 'error'}
             description={
-              status?.display?.initialized
-                ? `${status.display.width}×${status.display.height}`
+              status?.last_refresh
+                ? `Last refresh: ${new Date(status.last_refresh).toLocaleTimeString()}`
                 : 'Not connected'
             }
           />
 
           <StatusCard
-            title="Bluetooth"
-            value={status?.bluetooth?.enabled ? 'Enabled' : 'Disabled'}
+            title="System Info"
+            value={status?.system?.cpu_temp ? `${status.system.cpu_temp.toFixed(1)}°C` : 'N/A'}
             icon={<Wifi className="w-6 h-6" />}
-            status={status?.bluetooth?.enabled ? 'success' : 'warning'}
+            status={status?.system?.cpu_temp && status.system.cpu_temp < 70 ? 'success' : 'warning'}
             description={
-              status?.bluetooth?.connected_devices
-                ? `${status.bluetooth.connected_devices} device(s) connected`
-                : 'No devices connected'
+              status?.system?.memory_usage
+                ? `Memory: ${status.system.memory_usage.toFixed(1)}%`
+                : 'No data'
             }
           />
 
@@ -71,19 +71,25 @@ export default function Home() {
         <div className="mt-8 p-6 bg-gray-800/50 rounded-lg border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            Connection Information
+            System Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-gray-400">API Status:</span>
+              <span className="text-gray-400">Device ID:</span>
               <span className="text-white ml-2 font-medium">
+                {status?.device_id || 'Unknown'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400">Status:</span>
+              <span className={`ml-2 font-medium ${status?.status === 'online' ? 'text-green-400' : 'text-red-400'}`}>
                 {status?.status || 'Unknown'}
               </span>
             </div>
             <div>
-              <span className="text-gray-400">Device Name:</span>
+              <span className="text-gray-400">Uptime:</span>
               <span className="text-white ml-2 font-medium">
-                Lumy Display
+                {status?.system?.uptime ? `${Math.floor(status.system.uptime / 60)} minutes` : 'N/A'}
               </span>
             </div>
           </div>
