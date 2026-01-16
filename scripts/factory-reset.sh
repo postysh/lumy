@@ -79,6 +79,8 @@ PYTHON_CLEAR
 
 # Restart service
 echo "Starting Lumy service..."
+sudo systemctl unmask lumy.service 2>/dev/null || true
+sudo systemctl enable lumy.service
 sudo systemctl start lumy.service
 
 # Wait for service to start and show welcome screen
