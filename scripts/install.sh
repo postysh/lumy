@@ -266,48 +266,28 @@ echo "Step 8/10: Setting up WiFi AP mode..."
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Configure NetworkManager to ignore wlan0 when in AP mode
-sudo tee /etc/NetworkManager/conf.d/lumy-ap.conf > /dev/null <<'EOF'
-[keyfile]
-unmanaged-devices=interface-name:wlan0
-EOF
-
-# Configure hostapd
+# Configure hostapd for Pi Zero 2 W
 sudo tee /etc/hostapd/hostapd.conf > /dev/null <<'EOF'
-# Interface and driver
 interface=wlan0
 driver=nl80211
-
-# Network settings
 ssid=Lumy-Setup
 hw_mode=g
 channel=6
 ieee80211n=1
-ieee80211d=0
-country_code=US
-
-# Access point behavior
 wmm_enabled=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
-
-# Open network (no password for setup)
 wpa=0
-
-# QoS settings for better compatibility
-# wmm_ac_bk_cwmin=4
-# wmm_ac_bk_cwmax=10
 EOF
 
-sudo tee /etc/default/hostapd > /dev/null <<'EOF'
-DAEMON_CONF="/etc/hostapd/hostapd.conf"
-EOF
-
-# Unmask and stop hostapd (will be started by lumy-ap service)
+# Stop and disable services that interfere with AP mode
+sudo systemctl stop NetworkManager 2>/dev/null || true
+sudo systemctl disable NetworkManager 2>/dev/null || true
+sudo systemctl stop wpa_supplicant 2>/dev/null || true
+sudo systemctl disable wpa_supplicant 2>/dev/null || true
 sudo systemctl unmask hostapd 2>/dev/null || true
-sudo systemctl disable hostapd 2>/dev/null || true
-sudo systemctl stop hostapd 2>/dev/null || true
+sudo systemctl unmask dnsmasq 2>/dev/null || true
 
 # Configure dnsmasq
 sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
@@ -317,53 +297,68 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 address=/#/192.168.4.1
 EOF
 
+# Create network startup script for AP mode
+sudo tee /usr/local/bin/lumy-start-ap.sh > /dev/null <<'APSCRIPT'
+#!/bin/bash
+set -e
+
+echo "=== Starting Lumy AP Mode ==="
+
+# Kill any interfering processes
+pkill wpa_supplicant || true
+pkill NetworkManager || true
+pkill dhcpcd || true
+
+# Unblock WiFi
+rfkill unblock wifi
+sleep 1
+
+# Reset interface
+ip link set wlan0 down
+sleep 1
+ip addr flush dev wlan0
+sleep 1
+
+# Configure interface for AP mode
+ip addr add 192.168.4.1/24 dev wlan0
+ip link set wlan0 up
+sleep 2
+
+# Start hostapd
+echo "Starting hostapd..."
+systemctl start hostapd
+sleep 3
+
+# Start dnsmasq
+echo "Starting dnsmasq..."
+systemctl start dnsmasq
+sleep 1
+
+echo "=== AP Mode Started Successfully ==="
+echo "SSID: $(grep ^ssid= /etc/hostapd/hostapd.conf | cut -d= -f2)"
+echo "IP: 192.168.4.1"
+APSCRIPT
+
+sudo chmod +x /usr/local/bin/lumy-start-ap.sh
+
 # Create AP mode systemd service
 sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'EOF'
 [Unit]
 Description=Lumy WiFi Access Point
 After=network.target
-Before=NetworkManager.service
+Conflicts=NetworkManager.service wpa_supplicant.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -c '\
-    set -e; \
-    echo "Starting Lumy AP mode..."; \
-    systemctl stop NetworkManager 2>/dev/null || true; \
-    systemctl stop wpa_supplicant 2>/dev/null || true; \
-    systemctl unmask hostapd 2>/dev/null || true; \
-    rfkill unblock wifi; \
-    sleep 2; \
-    ip link set wlan0 down; \
-    sleep 1; \
-    ip addr flush dev wlan0; \
-    iw dev wlan0 set type __ap; \
-    ip addr add 192.168.4.1/24 dev wlan0; \
-    ip link set wlan0 up; \
-    sleep 2; \
-    systemctl start hostapd; \
-    sleep 3; \
-    systemctl start dnsmasq; \
-    sleep 1; \
-    echo "Lumy AP mode started"'
-ExecStop=/usr/bin/bash -c '\
-    echo "Stopping Lumy AP mode..."; \
-    systemctl stop hostapd 2>/dev/null || true; \
-    systemctl stop dnsmasq 2>/dev/null || true; \
-    ip link set wlan0 down 2>/dev/null || true; \
-    ip addr flush dev wlan0 2>/dev/null || true; \
-    systemctl start NetworkManager 2>/dev/null || true; \
-    echo "Lumy AP mode stopped"'
+ExecStart=/usr/local/bin/lumy-start-ap.sh
+ExecStop=/usr/bin/bash -c 'systemctl stop hostapd; systemctl stop dnsmasq; ip link set wlan0 down'
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Disable services by default (only start when needed)
-sudo systemctl disable hostapd 2>/dev/null || true
-sudo systemctl disable dnsmasq 2>/dev/null || true
-sudo systemctl unmask hostapd 2>/dev/null || true
 
 echo "✓ WiFi AP mode configured"
 echo ""

@@ -78,27 +78,24 @@ echo "✓ Device registration reset"
 
 echo "Clearing WiFi credentials..."
 
-# Check which network manager is active
-IS_NETWORKMANAGER=false
-IS_DHCPCD=false
+# Stop AP mode if running
+echo "  • Stopping AP mode..."
+sudo systemctl stop lumy-ap 2>/dev/null || true
+sudo systemctl stop hostapd 2>/dev/null || true
+sudo systemctl stop dnsmasq 2>/dev/null || true
 
-if systemctl is-active --quiet NetworkManager; then
-    IS_NETWORKMANAGER=true
-    echo "  • Detected: NetworkManager"
-elif systemctl is-active --quiet dhcpcd; then
-    IS_DHCPCD=true
-    echo "  • Detected: dhcpcd"
-fi
+# Re-enable NetworkManager for normal WiFi operation
+echo "  • Re-enabling NetworkManager..."
+sudo systemctl unmask NetworkManager 2>/dev/null || true
+sudo systemctl enable NetworkManager 2>/dev/null || true
+sudo systemctl start NetworkManager 2>/dev/null || true
 
-# Method 1: NetworkManager (primary on newer Raspberry Pi OS)
-if [ "$IS_NETWORKMANAGER" = true ]; then
-    echo "  • Clearing NetworkManager connections..."
-    sudo nmcli -f UUID,TYPE connection show | grep wifi | awk '{print $1}' | while read uuid; do
-        sudo nmcli connection delete uuid "$uuid" 2>/dev/null || true
-    done
-    sudo rm -rf /etc/NetworkManager/system-connections/* 2>/dev/null || true
-    sudo systemctl restart NetworkManager
-fi
+# Clear all WiFi connections
+echo "  • Clearing NetworkManager connections..."
+sudo nmcli -f UUID,TYPE connection show 2>/dev/null | grep wifi | awk '{print $1}' | while read uuid; do
+    sudo nmcli connection delete uuid "$uuid" 2>/dev/null || true
+done
+sudo rm -rf /etc/NetworkManager/system-connections/* 2>/dev/null || true
 
 # Method 2: Clear wpa_supplicant (used by both systems)
 echo "  • Clearing wpa_supplicant..."
