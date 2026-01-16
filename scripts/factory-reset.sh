@@ -77,27 +77,46 @@ rm -f "$LUMY_DIR/backend/lumy.log"
 echo "✓ Device registration reset"
 
 echo "Clearing WiFi credentials..."
-# Backup current wpa_supplicant config
+
+# Method 1: Clear wpa_supplicant config
 if [ -f /etc/wpa_supplicant/wpa_supplicant.conf ]; then
     sudo cp /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.backup
-fi
-
-# Reset wpa_supplicant to default (only contains country code and control interface)
-sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << 'WPAEOF'
+    sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << 'WPAEOF'
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=US
 WPAEOF
+    echo "  • wpa_supplicant.conf cleared"
+fi
 
-# Disconnect from current WiFi
-sudo wpa_cli -i wlan0 disconnect 2>/dev/null || true
-sudo wpa_cli -i wlan0 reconfigure 2>/dev/null || true
+# Method 2: Clear NetworkManager connections (if using NetworkManager)
+if [ -d /etc/NetworkManager/system-connections ]; then
+    sudo rm -f /etc/NetworkManager/system-connections/* 2>/dev/null || true
+    sudo systemctl restart NetworkManager 2>/dev/null || true
+    echo "  • NetworkManager connections cleared"
+fi
 
-# Remove DHCP leases
+# Method 3: Clear dhcpcd persistent config
+if [ -f /etc/dhcpcd.conf ]; then
+    # Remove any static IP configs for wlan0
+    sudo sed -i '/^interface wlan0/,/^$/d' /etc/dhcpcd.conf 2>/dev/null || true
+    echo "  • dhcpcd config cleared"
+fi
+
+# Method 4: Remove all WiFi-related state files
 sudo rm -f /var/lib/dhcp/*.leases 2>/dev/null || true
 sudo rm -f /var/lib/dhcpcd/*.lease 2>/dev/null || true
+sudo rm -f /var/lib/dhcpcd5/*.lease 2>/dev/null || true
+sudo rm -f /var/lib/wpa_supplicant/* 2>/dev/null || true
 
-echo "✓ WiFi credentials cleared"
+# Method 5: Force disconnect and forget all networks
+sudo rfkill unblock wifi 2>/dev/null || true
+sudo ip link set wlan0 down 2>/dev/null || true
+sudo wpa_cli -i wlan0 disconnect 2>/dev/null || true
+sudo wpa_cli -i wlan0 remove_network all 2>/dev/null || true
+sudo wpa_cli -i wlan0 save_config 2>/dev/null || true
+
+echo "✓ WiFi credentials cleared (will need reboot to take effect)"
 echo ""
 echo "======================================"
 echo "  ✓ Factory Reset Complete"
@@ -119,6 +138,16 @@ echo "  5. Display shows: 'Welcome to Lumy' + Registration Code"
 echo "  6. Customer visits: https://lumy-beta.vercel.app"
 echo "  7. Customer signs in and adds device with code"
 echo ""
-echo "To test now without shipping:"
-echo "  sudo reboot"
+echo "⚠️  IMPORTANT: You must reboot for WiFi changes to take effect!"
 echo ""
+read -p "Reboot now? (yes/no): " -r
+echo
+if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+    echo "Rebooting in 3 seconds..."
+    sleep 3
+    sudo reboot
+else
+    echo "To complete factory reset, reboot manually:"
+    echo "  sudo reboot"
+    echo ""
+fi
