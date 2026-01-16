@@ -46,13 +46,14 @@ if [ -f "$LUMY_DIR/backend/.env" ]; then
     sed -i '/^LUMY_DEVICE_ID=/d' "$LUMY_DIR/backend/.env"
     sed -i '/^LUMY_USER_ID=/d' "$LUMY_DIR/backend/.env"
     
-    # Add commented placeholders back
-    echo "" >> "$LUMY_DIR/backend/.env"
-    echo "# Device ID will be auto-generated on first run" >> "$LUMY_DIR/backend/.env"
-    echo "# LUMY_DEVICE_ID=" >> "$LUMY_DIR/backend/.env"
+    # Generate a new unique device ID suffix (so it's different from before)
+    NEW_SUFFIX=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)
+    echo "LUMY_DEVICE_ID=lumy-reset-${NEW_SUFFIX}" >> "$LUMY_DIR/backend/.env"
+    
+    # Add commented placeholder for user ID
     echo "# LUMY_USER_ID=" >> "$LUMY_DIR/backend/.env"
     
-    echo "✓ Cleared device registration from .env"
+    echo "✓ Cleared device registration and generated new device ID"
 fi
 
 # Clear logs
