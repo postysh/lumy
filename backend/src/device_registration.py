@@ -197,12 +197,12 @@ class DeviceRegistration:
             image = Image.new('RGB', (display_manager.width, display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (sized for 800x480 display)
+            # Load fonts (readable sizes for 800x480 display)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
-                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 42)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
-                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 56)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 52)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
+                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
             except:
                 font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
@@ -216,22 +216,22 @@ class DeviceRegistration:
             title_text = "Welcome to Lumy"
             title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
             title_width = title_bbox[2] - title_bbox[0]
-            draw.text((center_x - title_width // 2, 40), title_text, font=font_title, fill=(0, 0, 0))
+            draw.text((center_x - title_width // 2, 30), title_text, font=font_title, fill=(0, 0, 0))
             
             # Draw registration instructions
             instruction1 = "To register your device:"
             instruction1_bbox = draw.textbbox((0, 0), instruction1, font=font_medium)
             instruction1_width = instruction1_bbox[2] - instruction1_bbox[0]
-            draw.text((center_x - instruction1_width // 2, 120), instruction1, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - instruction1_width // 2, 110), instruction1, font=font_medium, fill=(0, 0, 0))
             
             instruction2 = "Visit: lumy-beta.vercel.app"
             instruction2_bbox = draw.textbbox((0, 0), instruction2, font=font_medium)
             instruction2_width = instruction2_bbox[2] - instruction2_bbox[0]
-            draw.text((center_x - instruction2_width // 2, 160), instruction2, font=font_medium, fill=(0, 100, 200))
+            draw.text((center_x - instruction2_width // 2, 155), instruction2, font=font_medium, fill=(0, 100, 200))
             
             # Draw registration code in a box
             code_y = 240
-            box_padding = 15
+            box_padding = 18
             code_text = f"Code: {self.registration_code}"
             code_bbox = draw.textbbox((0, 0), code_text, font=font_large)
             code_width = code_bbox[2] - code_bbox[0]
@@ -242,7 +242,7 @@ class DeviceRegistration:
             box_right = center_x + code_width // 2 + box_padding
             box_top = code_y - box_padding
             box_bottom = code_y + code_height + box_padding
-            draw.rectangle([box_left, box_top, box_right, box_bottom], outline=(255, 100, 0), width=3)
+            draw.rectangle([box_left, box_top, box_right, box_bottom], outline=(255, 100, 0), width=4)
             
             # Draw code
             draw.text((center_x - code_width // 2, code_y), code_text, font=font_large, fill=(255, 100, 0))
@@ -251,7 +251,7 @@ class DeviceRegistration:
             device_text = f"Device ID: {self.device_id}"
             device_bbox = draw.textbbox((0, 0), device_text, font=font_small)
             device_width = device_bbox[2] - device_bbox[0]
-            draw.text((center_x - device_width // 2, 420), device_text, font=font_small, fill=(128, 128, 128))
+            draw.text((center_x - device_width // 2, 410), device_text, font=font_small, fill=(128, 128, 128))
             
             # Display image
             await display_manager.display_image(image)

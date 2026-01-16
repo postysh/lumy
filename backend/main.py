@@ -169,11 +169,11 @@ class LumyApp:
             image = Image.new('RGB', (self.display_manager.width, self.display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (sized for 800x480 display)
+            # Load fonts (readable sizes for 800x480 display)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 44)
-                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 38)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 26)
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 52)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 30)
             except:
                 font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
@@ -185,13 +185,13 @@ class LumyApp:
             title_text = "WiFi Setup Required"
             title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
             title_width = title_bbox[2] - title_bbox[0]
-            draw.text((center_x - title_width // 2, 40), title_text, font=font_title, fill=(0, 0, 0))
+            draw.text((center_x - title_width // 2, 30), title_text, font=font_title, fill=(0, 0, 0))
             
             # Instructions
             inst1 = "1. Connect to this WiFi:"
             inst1_bbox = draw.textbbox((0, 0), inst1, font=font_medium)
             inst1_width = inst1_bbox[2] - inst1_bbox[0]
-            draw.text((center_x - inst1_width // 2, 120), inst1, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst1_width // 2, 110), inst1, font=font_medium, fill=(0, 0, 0))
             
             # WiFi name (highlighted)
             ssid_bbox = draw.textbbox((0, 0), ap_ssid, font=font_large)
@@ -199,14 +199,14 @@ class LumyApp:
             ssid_height = ssid_bbox[3] - ssid_bbox[1]
             
             # Draw box around SSID
-            box_padding = 12
-            box_y = 170
+            box_padding = 15
+            box_y = 165
             draw.rectangle([
                 center_x - ssid_width // 2 - box_padding,
                 box_y - box_padding,
                 center_x + ssid_width // 2 + box_padding,
                 box_y + ssid_height + box_padding
-            ], outline=(0, 100, 200), width=3)
+            ], outline=(0, 100, 200), width=4)
             
             draw.text((center_x - ssid_width // 2, box_y), ap_ssid, font=font_large, fill=(0, 100, 200))
             
@@ -214,12 +214,12 @@ class LumyApp:
             inst2 = "2. Open browser (auto-redirects)"
             inst2_bbox = draw.textbbox((0, 0), inst2, font=font_medium)
             inst2_width = inst2_bbox[2] - inst2_bbox[0]
-            draw.text((center_x - inst2_width // 2, 250), inst2, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst2_width // 2, 255), inst2, font=font_medium, fill=(0, 0, 0))
             
             inst3 = "3. Select WiFi & enter password"
             inst3_bbox = draw.textbbox((0, 0), inst3, font=font_medium)
             inst3_width = inst3_bbox[2] - inst3_bbox[0]
-            draw.text((center_x - inst3_width // 2, 290), inst3, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst3_width // 2, 300), inst3, font=font_medium, fill=(0, 0, 0))
             
             # Display image
             await self.display_manager.display_image(image)
@@ -247,10 +247,10 @@ class LumyApp:
             image = Image.new('RGB', (display_manager.width, display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (sized for 800x480)
+            # Load fonts (readable sizes for 800x480)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 52)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 56)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 36)
             except:
                 font_title = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
@@ -261,13 +261,13 @@ class LumyApp:
             title_text = "Registration Successful!"
             title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
             title_width = title_bbox[2] - title_bbox[0]
-            draw.text((center_x - title_width // 2, 150), title_text, font=font_title, fill=(0, 150, 0))
+            draw.text((center_x - title_width // 2, 140), title_text, font=font_title, fill=(0, 150, 0))
             
             # Draw subtitle
             subtitle_text = "Loading your widgets..."
             subtitle_bbox = draw.textbbox((0, 0), subtitle_text, font=font_medium)
             subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
-            draw.text((center_x - subtitle_width // 2, 250), subtitle_text, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - subtitle_width // 2, 240), subtitle_text, font=font_medium, fill=(0, 0, 0))
             
             # Display image
             await display_manager.display_image(image)

@@ -202,10 +202,10 @@ try:
     image = Image.new('RGB', (800, 480), color=(255, 255, 255))
     draw = ImageDraw.Draw(image)
     
-    # Use proper font sizes for 800x480 display
+    # Use readable font sizes for 800x480 display
     try:
-        font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
-        font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
+        font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 58)
+        font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 36)
     except:
         font_large = ImageFont.load_default()
         font_small = ImageFont.load_default()
@@ -214,16 +214,16 @@ try:
     center_x = 400
     
     # Title
-    title = "✓ Installation Complete"
+    title = "Installation Complete"
     title_bbox = draw.textbbox((0, 0), title, font=font_large)
     title_width = title_bbox[2] - title_bbox[0]
-    draw.text((center_x - title_width // 2, 150), title, font=font_large, fill=(0, 150, 0))
+    draw.text((center_x - title_width // 2, 140), title, font=font_large, fill=(0, 150, 0))
     
     # Subtitle
     subtitle = "Display is working correctly"
     subtitle_bbox = draw.textbbox((0, 0), subtitle, font=font_small)
     subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
-    draw.text((center_x - subtitle_width // 2, 250), subtitle, font=font_small, fill=(100, 100, 100))
+    draw.text((center_x - subtitle_width // 2, 240), subtitle, font=font_small, fill=(100, 100, 100))
     
     print("  • Displaying on screen...")
     epd.display(epd.getbuffer(image))
