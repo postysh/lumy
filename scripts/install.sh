@@ -44,7 +44,7 @@ cd /tmp
 if [ -d "e-Paper" ]; then
     rm -rf e-Paper
 fi
-git clone https://github.com/waveshare/e-Paper.git
+git clone --depth 1 https://github.com/waveshare/e-Paper.git
 cd e-Paper/RaspberryPi_JetsonNano/python
 sudo pip3 install .
 cd ~

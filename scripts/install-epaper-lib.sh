@@ -15,12 +15,12 @@ sudo apt-get install -y libopenjp2-7 libtiff6 || sudo apt-get install -y libtiff
 sudo apt-get install -y python3-spidev
 
 # Install library
-echo "Cloning Waveshare repository..."
+echo "Cloning Waveshare repository (shallow clone for Raspberry Pi Zero)..."
 cd /tmp
 if [ -d "e-Paper" ]; then
     rm -rf e-Paper
 fi
-git clone https://github.com/waveshare/e-Paper.git
+git clone --depth 1 https://github.com/waveshare/e-Paper.git
 
 echo "Installing library..."
 cd e-Paper/RaspberryPi_JetsonNano/python
