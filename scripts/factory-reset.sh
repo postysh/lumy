@@ -35,6 +35,10 @@ echo ""
 echo "Stopping Lumy service..."
 sudo systemctl stop lumy.service
 
+echo "Ensuring service auto-starts on reboot..."
+sudo systemctl unmask lumy.service 2>/dev/null || true
+sudo systemctl enable lumy.service 2>/dev/null || true
+
 echo "Clearing display..."
 cd "$LUMY_DIR/backend"
 source venv/bin/activate
@@ -52,8 +56,6 @@ try:
 except Exception as e:
     print(f"  ⚠ Could not clear display: {e}")
 CLEAR_DISPLAY
-
-deactivate
 
 echo "Resetting device registration..."
 # Backup current .env
@@ -73,6 +75,29 @@ echo "# LUMY_USER_ID=" >> "$LUMY_DIR/backend/.env"
 rm -f "$LUMY_DIR/backend/lumy.log"
 
 echo "✓ Device registration reset"
+
+echo "Clearing WiFi credentials..."
+# Backup current wpa_supplicant config
+if [ -f /etc/wpa_supplicant/wpa_supplicant.conf ]; then
+    sudo cp /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.backup
+fi
+
+# Reset wpa_supplicant to default (only contains country code and control interface)
+sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << 'WPAEOF'
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+WPAEOF
+
+# Disconnect from current WiFi
+sudo wpa_cli -i wlan0 disconnect 2>/dev/null || true
+sudo wpa_cli -i wlan0 reconfigure 2>/dev/null || true
+
+# Remove DHCP leases
+sudo rm -f /var/lib/dhcp/*.leases 2>/dev/null || true
+sudo rm -f /var/lib/dhcpcd/*.lease 2>/dev/null || true
+
+echo "✓ WiFi credentials cleared"
 echo ""
 echo "======================================"
 echo "  ✓ Factory Reset Complete"
@@ -81,14 +106,18 @@ echo ""
 echo "Display: Blank/white (ready to ship)"
 echo "Service: Stopped"
 echo "Registration: Cleared"
+echo "WiFi: Cleared (will show AP mode)"
 echo ""
 echo "📦 READY TO SHIP!"
 echo ""
 echo "Customer first boot experience:"
 echo "  1. Power on device"
-echo "  2. Display shows: 'Welcome to Lumy' + Registration Code"
-echo "  3. Customer visits: https://lumy-beta.vercel.app"
-echo "  4. Customer signs in and adds device with code"
+echo "  2. Display shows: 'Connect to Lumy-XXXXXX WiFi'"
+echo "  3. Customer connects phone to that WiFi"
+echo "  4. Browser auto-opens to configure home WiFi"
+echo "  5. Display shows: 'Welcome to Lumy' + Registration Code"
+echo "  6. Customer visits: https://lumy-beta.vercel.app"
+echo "  7. Customer signs in and adds device with code"
 echo ""
 echo "To test now without shipping:"
 echo "  sudo reboot"
