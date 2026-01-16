@@ -84,17 +84,15 @@ sudo systemctl stop lumy-ap 2>/dev/null || true
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Re-enable NetworkManager for normal WiFi operation
-echo "  • Re-enabling NetworkManager..."
-sudo systemctl unmask NetworkManager 2>/dev/null || true
-sudo systemctl enable NetworkManager 2>/dev/null || true
-sudo systemctl start NetworkManager 2>/dev/null || true
+# Remove dhcpcd AP mode configuration
+echo "  • Removing dhcpcd AP config..."
+sudo sed -i '/# Lumy AP Mode Configuration/,/nohook wpa_supplicant/d' /etc/dhcpcd.conf 2>/dev/null || true
+
+# Restart dhcpcd to apply changes
+sudo systemctl restart dhcpcd 2>/dev/null || true
 
 # Clear all WiFi connections
-echo "  • Clearing NetworkManager connections..."
-sudo nmcli -f UUID,TYPE connection show 2>/dev/null | grep wifi | awk '{print $1}' | while read uuid; do
-    sudo nmcli connection delete uuid "$uuid" 2>/dev/null || true
-done
+echo "  • Clearing WiFi connections..."
 sudo rm -rf /etc/NetworkManager/system-connections/* 2>/dev/null || true
 
 # Method 2: Clear wpa_supplicant (used by both systems)

@@ -265,109 +265,76 @@ echo "Step 8/10: Setting up WiFi AP mode..."
 # Stop services during configuration
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
+sudo systemctl stop NetworkManager 2>/dev/null || true
+sudo systemctl stop wpa_supplicant 2>/dev/null || true
 
-# Configure hostapd for Pi Zero 2 W (tested working config)
+# CRITICAL: Configure dhcpcd to give wlan0 static IP and prevent wpa_supplicant interference
+echo "  • Configuring dhcpcd for AP mode..."
+if ! grep -q "^interface wlan0$" /etc/dhcpcd.conf; then
+    sudo tee -a /etc/dhcpcd.conf > /dev/null <<'DHCPCD'
+
+# Lumy AP Mode Configuration
+interface wlan0
+    static ip_address=192.168.4.1/24
+    nohook wpa_supplicant
+DHCPCD
+fi
+
+# Configure hostapd for Pi Zero 2 W (minimal, proven config)
 sudo tee /etc/hostapd/hostapd.conf > /dev/null <<'EOF'
 interface=wlan0
 ssid=Lumy-Setup
-channel=6
 hw_mode=g
-macaddr_acl=0
+channel=6
 auth_algs=1
-ignore_broadcast_ssid=0
+wmm_enabled=0
 EOF
 
-# Stop and disable services that interfere with AP mode
-sudo systemctl stop NetworkManager 2>/dev/null || true
-sudo systemctl disable NetworkManager 2>/dev/null || true
-sudo systemctl stop wpa_supplicant 2>/dev/null || true
-sudo systemctl disable wpa_supplicant 2>/dev/null || true
+# Set hostapd to use our config
+sudo sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd 2>/dev/null || true
+
+# Unmask services
 sudo systemctl unmask hostapd 2>/dev/null || true
 sudo systemctl unmask dnsmasq 2>/dev/null || true
 
-# Configure dnsmasq for DHCP and DNS
+# Configure dnsmasq for DHCP
+echo "  • Configuring dnsmasq..."
 sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
 sudo tee /etc/dnsmasq.conf > /dev/null <<'EOF'
 interface=wlan0
-bind-interfaces
-server=8.8.8.8
-domain-needed
-bogus-priv
-dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
-dhcp-option=3,192.168.4.1
-dhcp-option=6,192.168.4.1
-address=/#/192.168.4.1
+dhcp-range=192.168.4.10,192.168.4.250,255.255.255.0,24h
+domain=wlan
+address=/gstatic.com/192.168.4.1
+address=/apple.com/192.168.4.1
+address=/connectivitycheck.gstatic.com/192.168.4.1
+address=/captive.apple.com/192.168.4.1
 EOF
 
-# Create network startup script for AP mode
+# Create simplified AP mode startup script (dhcpcd handles IP)
 sudo tee /usr/local/bin/lumy-start-ap.sh > /dev/null <<'APSCRIPT'
 #!/bin/bash
-set -e
-
 echo "=== Starting Lumy AP Mode ==="
 
-# Kill any interfering processes
-echo "Stopping conflicting services..."
-systemctl stop NetworkManager 2>/dev/null || true
-systemctl stop wpa_supplicant 2>/dev/null || true
-pkill wpa_supplicant || true
-pkill NetworkManager || true
-pkill dhcpcd || true
-sleep 2
-
 # Unblock WiFi
-echo "Unblocking WiFi..."
 rfkill unblock wifi
 sleep 1
 
-# Reset interface completely
-echo "Resetting wlan0 interface..."
-ip link set wlan0 down
-sleep 1
-ip addr flush dev wlan0
-sleep 1
-
-# Configure interface for AP mode
-echo "Configuring wlan0 for AP mode..."
-ip addr add 192.168.4.1/24 broadcast 192.168.4.255 dev wlan0
-ip link set wlan0 up
-sleep 2
-
-# Verify interface is up
-if ! ip addr show wlan0 | grep -q "192.168.4.1"; then
-    echo "ERROR: Failed to configure wlan0"
-    exit 1
-fi
+# Restart dhcpcd to apply static IP config
+systemctl restart dhcpcd
+sleep 3
 
 # Start hostapd
 echo "Starting hostapd..."
 systemctl start hostapd
-sleep 4
+sleep 3
 
-# Check hostapd status
-if ! systemctl is-active --quiet hostapd; then
-    echo "ERROR: hostapd failed to start"
-    journalctl -u hostapd -n 20 --no-pager
-    exit 1
-fi
-
-# Start dnsmasq for DHCP
+# Start dnsmasq
 echo "Starting dnsmasq..."
 systemctl start dnsmasq
-sleep 2
+sleep 1
 
-# Check dnsmasq status
-if ! systemctl is-active --quiet dnsmasq; then
-    echo "ERROR: dnsmasq failed to start"
-    journalctl -u dnsmasq -n 20 --no-pager
-    exit 1
-fi
-
-echo "=== AP Mode Started Successfully ==="
-echo "SSID: $(grep ^ssid= /etc/hostapd/hostapd.conf | cut -d= -f2)"
-echo "IP: 192.168.4.1"
-echo "Interface status:"
-ip addr show wlan0
+echo "=== AP Mode Started ==="
+ip addr show wlan0 | grep "inet "
 APSCRIPT
 
 sudo chmod +x /usr/local/bin/lumy-start-ap.sh
@@ -376,16 +343,14 @@ sudo chmod +x /usr/local/bin/lumy-start-ap.sh
 sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'EOF'
 [Unit]
 Description=Lumy WiFi Access Point
-After=network.target
-Conflicts=NetworkManager.service wpa_supplicant.service
+After=dhcpcd.service
+Wants=dhcpcd.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/lumy-start-ap.sh
-ExecStop=/usr/bin/bash -c 'systemctl stop hostapd; systemctl stop dnsmasq; ip link set wlan0 down'
-Restart=on-failure
-RestartSec=5
+ExecStop=/usr/bin/bash -c 'systemctl stop hostapd; systemctl stop dnsmasq'
 
 [Install]
 WantedBy=multi-user.target
