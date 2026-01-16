@@ -75,23 +75,60 @@ class WiFiManager:
         try:
             logger.info("Starting WiFi AP mode...")
             
-            # Generate SSID
+            # Generate SSID with MAC address
             mac = self.get_mac_address()
             self.ap_ssid = f"Lumy-{mac}"
             
-            # Stop wpa_supplicant
+            logger.info(f"AP SSID will be: {self.ap_ssid}")
+            
+            # Update hostapd config with dynamic SSID
+            hostapd_conf = f"""interface=wlan0
+driver=nl80211
+ssid={self.ap_ssid}
+hw_mode=g
+channel=7
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=0
+"""
+            subprocess.run(['sudo', 'tee', '/etc/hostapd/hostapd.conf'], 
+                         input=hostapd_conf, text=True, capture_output=True, check=False)
+            
+            # Stop NetworkManager if it's running (it interferes with hostapd)
+            subprocess.run(['sudo', 'systemctl', 'stop', 'NetworkManager'], check=False)
             subprocess.run(['sudo', 'systemctl', 'stop', 'wpa_supplicant'], check=False)
             
+            # Unblock WiFi (in case it was blocked)
+            subprocess.run(['sudo', 'rfkill', 'unblock', 'wifi'], check=False)
+            
             # Start AP mode service
-            subprocess.run(['sudo', 'systemctl', 'start', 'lumy-ap'], check=True)
+            logger.info("Starting lumy-ap service...")
+            result = subprocess.run(['sudo', 'systemctl', 'start', 'lumy-ap'], 
+                                  capture_output=True, text=True)
             
-            self.is_ap_mode = True
-            logger.info(f"AP mode started: {self.ap_ssid}")
+            if result.returncode != 0:
+                logger.error(f"Failed to start lumy-ap: {result.stderr}")
+                return None
             
-            return self.ap_ssid
+            # Wait a moment for AP to start
+            import time
+            time.sleep(3)
+            
+            # Verify hostapd is running
+            check = subprocess.run(['sudo', 'systemctl', 'is-active', 'hostapd'], 
+                                 capture_output=True, text=True)
+            if check.stdout.strip() == 'active':
+                logger.info(f"✓ AP mode active: {self.ap_ssid}")
+                self.is_ap_mode = True
+                return self.ap_ssid
+            else:
+                logger.error("hostapd service not active")
+                return None
             
         except Exception as e:
-            logger.error(f"Failed to start AP mode: {e}")
+            logger.error(f"Failed to start AP mode: {e}", exc_info=True)
             return None
     
     def stop_ap_mode(self):
