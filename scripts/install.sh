@@ -119,21 +119,57 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+# Create .env file
+echo ""
+echo "==================================="
+echo "  Configuration"
+echo "==================================="
+echo ""
+echo "Enter your Vercel dashboard URL (or press Enter for default):"
+read -p "API URL [https://lumy-beta.vercel.app/api]: " API_URL
+API_URL=${API_URL:-https://lumy-beta.vercel.app/api}
+
+echo "Enter your API key (from Vercel environment variables):"
+read -p "API Key: " API_KEY
+
+# Create .env file
+cat > ~/lumy/backend/.env << EOFENV
+# Lumy Configuration
+LUMY_API_URL=$API_URL
+LUMY_API_KEY=$API_KEY
+
+# Device ID will be auto-generated on first run
+# LUMY_DEVICE_ID=
+# LUMY_USER_ID=
+EOFENV
+
+echo "✓ Configuration saved to ~/lumy/backend/.env"
+
 # Enable and start service
+echo ""
 echo "Enabling Lumy service..."
 sudo systemctl daemon-reload
 sudo systemctl enable lumy.service
+sudo systemctl start lumy.service
 
 echo ""
 echo "==================================="
 echo "  Installation Complete!"
 echo "==================================="
 echo ""
-echo "Next steps:"
-echo "1. Edit configuration: nano ~/lumy/backend/config.yaml"
-echo "2. Start Lumy: sudo systemctl start lumy"
-echo "3. Check status: sudo systemctl status lumy"
-echo "4. View logs: journalctl -u lumy -f"
+echo "✓ Lumy is now running as a system service"
+echo "✓ It will auto-start on every reboot"
 echo ""
-echo "Web dashboard: cd ~/lumy/web && npm run dev"
+echo "Your display should now show a registration code!"
+echo ""
+echo "To register your device:"
+echo "  1. Visit: $API_URL"
+echo "  2. Sign in to your dashboard"
+echo "  3. Click 'Add Device' and enter the code shown on your display"
+echo ""
+echo "Useful commands:"
+echo "  • View logs:      journalctl -u lumy -f"
+echo "  • Check status:   sudo systemctl status lumy"
+echo "  • Restart:        sudo systemctl restart lumy"
+echo "  • Stop:           sudo systemctl stop lumy"
 echo ""
