@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-// Default to localhost, can be configured via environment variable
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+// Use Vercel API endpoints (relative URLs work in production)
+const API_BASE_URL = '/api'
+const DEVICE_ID = 'lumy-001'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -15,7 +16,7 @@ export const api = axios.create({
 export const apiClient = {
   // Status
   getStatus: async () => {
-    const { data } = await api.get('/status')
+    const { data } = await api.get(`/devices/${DEVICE_ID}/status`)
     return data
   },
 
