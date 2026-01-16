@@ -183,8 +183,8 @@ echo "  • Cleaning GPIO pins..."
 sudo /usr/local/bin/lumy-gpio-cleanup.sh
 
 echo "  • Running display test..."
-# MUST run as root for GPIO access
-sudo python3 << 'DISPLAY_TEST'
+# MUST run as root for GPIO access, using venv python
+sudo "$LUMY_DIR/backend/venv/bin/python3" << 'DISPLAY_TEST'
 import sys
 import os
 # Use system-installed lgpio (modern GPIO library)
