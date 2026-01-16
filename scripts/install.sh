@@ -25,6 +25,12 @@ if ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
     fi
 fi
 
+# Install git if not present
+if ! command -v git &> /dev/null; then
+    echo "Installing git..."
+    sudo apt-get install -y git
+fi
+
 # Get actual user (not root if using sudo)
 ACTUAL_USER="${SUDO_USER:-$USER}"
 echo "Installing for user: $ACTUAL_USER"
@@ -35,6 +41,7 @@ echo ""
 #===========================================
 echo "Step 1/10: Installing system packages..."
 sudo apt-get update
+sudo apt-get install -y git build-essential
 sudo apt-get install -y python3 python3-pip python3-venv python3-dev
 sudo apt-get install -y python3-pil python3-numpy
 sudo apt-get install -y libopenjp2-7 libtiff6 || true
@@ -74,67 +81,34 @@ echo "✓ Python packages installed"
 echo ""
 
 #===========================================
-# STEP 5: Install & Patch Waveshare Library
+# STEP 5: Install Waveshare Library (Official Method)
 #===========================================
 echo "Step 5/10: Installing Waveshare E-Paper library..."
 
-# Download library
-TMP_DIR="/tmp/waveshare_install_$$"
-mkdir -p "$TMP_DIR/waveshare_epd"
-cd "$TMP_DIR"
-
-BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python"
-wget -q "$BASE_URL/lib/waveshare_epd/__init__.py" -O waveshare_epd/__init__.py
-wget -q "$BASE_URL/lib/waveshare_epd/epdconfig.py" -O waveshare_epd/epdconfig.py
-wget -q "$BASE_URL/lib/waveshare_epd/epd7in3e.py" -O waveshare_epd/epd7in3e.py
-
-# CRITICAL FIX: Patch epdconfig.py for lazy GPIO initialization
-echo "Patching Waveshare library for proper GPIO handling..."
-
-# Remove the automatic initialization at module level (lines 312-319)
-sed -i '312,319d' waveshare_epd/epdconfig.py
-
-# Add lazy initialization code at the end
-cat >> waveshare_epd/epdconfig.py << 'LAZY_INIT'
-
-# Lazy initialization to prevent GPIO conflicts at import time
-implementation = None
-
-def module_init():
-    """Initialize GPIO - must be called before using display"""
-    global implementation
-    if implementation is not None:
-        return
-    
-    output = os.popen('cat /proc/cpuinfo | grep Hardware').read()
-    if "Raspberry" in output:
-        implementation = RaspberryPi()
-    elif os.path.exists('/sys/bus/platform/drivers/gpio-x3'):
-        implementation = SunriseX3()
-    else:
-        implementation = JetsonNano()
-
-def module_exit():
-    """Cleanup GPIO"""
-    global implementation
-    if implementation is not None:
-        implementation.module_exit()
-
-# Export all implementation functions
-def __getattr__(name):
-    if implementation is None:
-        module_init()
-    return getattr(implementation, name)
-LAZY_INIT
-
-# Copy to venv
-VENV_SITE_PACKAGES="$LUMY_DIR/backend/venv/lib/python3.*/site-packages"
-cp -r waveshare_epd $VENV_SITE_PACKAGES/
-
+# Clone official Waveshare repo
 cd /tmp
-rm -rf "$TMP_DIR"
+rm -rf e-Paper
+git clone --depth 1 https://github.com/waveshare/e-Paper.git
+cd e-Paper/RaspberryPi_JetsonNano/python
 
-echo "✓ Waveshare library installed and patched"
+# Install using their setup.py into our venv
+cd "$LUMY_DIR/backend"
+source venv/bin/activate
+cd /tmp/e-Paper/RaspberryPi_JetsonNano/python
+pip install .
+
+# Verify installation
+python3 -c "from waveshare_epd import epd7in3e; print('✓ Waveshare library installed')" || {
+    echo "Failed to install Waveshare library"
+    exit 1
+}
+
+deactivate
+
+# Cleanup
+cd /tmp
+rm -rf e-Paper
+
 echo ""
 
 #===========================================
