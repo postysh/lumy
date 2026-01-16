@@ -90,19 +90,42 @@ wget -q "$BASE_URL/lib/waveshare_epd/epd7in3e.py" -O waveshare_epd/epd7in3e.py
 
 # CRITICAL FIX: Patch epdconfig.py for lazy GPIO initialization
 echo "Patching Waveshare library for proper GPIO handling..."
-sed -i '313s/^implementation = RaspberryPi()/# &/' waveshare_epd/epdconfig.py
-sed -i '313i\
-implementation = None\
-\
-def _get_implementation():\
-    global implementation\
-    if implementation is None:\
-        implementation = RaspberryPi()\
-    return implementation\
-' waveshare_epd/epdconfig.py
 
-# Update function mapping to use lazy initialization
-sed -i 's/getattr(implementation, func)/getattr(_get_implementation(), func)/g' waveshare_epd/epdconfig.py
+# Remove the automatic initialization at module level (lines 312-319)
+sed -i '312,319d' waveshare_epd/epdconfig.py
+
+# Add lazy initialization code at the end
+cat >> waveshare_epd/epdconfig.py << 'LAZY_INIT'
+
+# Lazy initialization to prevent GPIO conflicts at import time
+implementation = None
+
+def module_init():
+    """Initialize GPIO - must be called before using display"""
+    global implementation
+    if implementation is not None:
+        return
+    
+    output = os.popen('cat /proc/cpuinfo | grep Hardware').read()
+    if "Raspberry" in output:
+        implementation = RaspberryPi()
+    elif os.path.exists('/sys/bus/platform/drivers/gpio-x3'):
+        implementation = SunriseX3()
+    else:
+        implementation = JetsonNano()
+
+def module_exit():
+    """Cleanup GPIO"""
+    global implementation
+    if implementation is not None:
+        implementation.module_exit()
+
+# Export all implementation functions
+def __getattr__(name):
+    if implementation is None:
+        module_init()
+    return getattr(implementation, name)
+LAZY_INIT
 
 # Copy to venv
 VENV_SITE_PACKAGES="$LUMY_DIR/backend/venv/lib/python3.*/site-packages"
