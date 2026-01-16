@@ -137,7 +137,7 @@ try:
         print("Attempting to send a direct pixel buffer...")
         
         # Create a simple black and white pattern
-        from PIL import Image
+        from PIL import Image, ImageDraw
         
         # Re-init
         epd.init()
