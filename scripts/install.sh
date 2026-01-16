@@ -282,21 +282,36 @@ sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'EOF'
 [Unit]
 Description=Lumy WiFi Access Point
 After=network.target
+Before=NetworkManager.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/bash -c '\
-    systemctl stop wpa_supplicant; \
-    ifconfig wlan0 down; \
-    ifconfig wlan0 192.168.4.1 netmask 255.255.255.0 up; \
+    set -e; \
+    echo "Starting Lumy AP mode..."; \
+    systemctl stop NetworkManager 2>/dev/null || true; \
+    systemctl stop wpa_supplicant 2>/dev/null || true; \
+    systemctl unmask hostapd 2>/dev/null || true; \
+    rfkill unblock wifi; \
+    sleep 1; \
+    ip link set wlan0 down; \
+    ip addr flush dev wlan0; \
+    ip addr add 192.168.4.1/24 dev wlan0; \
+    ip link set wlan0 up; \
+    sleep 1; \
     systemctl start hostapd; \
-    systemctl start dnsmasq'
+    sleep 2; \
+    systemctl start dnsmasq; \
+    echo "Lumy AP mode started"'
 ExecStop=/usr/bin/bash -c '\
-    systemctl stop hostapd; \
-    systemctl stop dnsmasq; \
-    systemctl start wpa_supplicant; \
-    systemctl restart dhcpcd'
+    echo "Stopping Lumy AP mode..."; \
+    systemctl stop hostapd 2>/dev/null || true; \
+    systemctl stop dnsmasq 2>/dev/null || true; \
+    ip link set wlan0 down 2>/dev/null || true; \
+    ip addr flush dev wlan0 2>/dev/null || true; \
+    systemctl start NetworkManager 2>/dev/null || true; \
+    echo "Lumy AP mode stopped"'
 
 [Install]
 WantedBy=multi-user.target
@@ -305,6 +320,7 @@ EOF
 # Disable services by default (only start when needed)
 sudo systemctl disable hostapd 2>/dev/null || true
 sudo systemctl disable dnsmasq 2>/dev/null || true
+sudo systemctl unmask hostapd 2>/dev/null || true
 
 echo "✓ WiFi AP mode configured"
 echo ""
