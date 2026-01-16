@@ -66,7 +66,8 @@ echo ""
 #===========================================
 echo "Step 3/10: Creating Python virtual environment..."
 cd "$LUMY_DIR/backend"
-python3 -m venv venv
+# Create venv with access to system site-packages (for lgpio/gpiozero)
+python3 -m venv --system-site-packages venv
 source venv/bin/activate
 
 echo "Step 4/10: Installing Python packages..."
@@ -128,8 +129,6 @@ if [ $? -ne 0 ]; then
     echo "✗ Failed to install Waveshare library"
     exit 1
 fi
-
-deactivate
 
 # Cleanup
 cd /tmp
@@ -361,8 +360,6 @@ EOFENV
 
 # Change ownership to actual user
 sudo chown -R $ACTUAL_USER:$ACTUAL_USER "$LUMY_DIR"
-
-deactivate
 
 # Enable and start service
 sudo systemctl daemon-reload
