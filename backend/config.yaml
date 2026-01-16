@@ -24,6 +24,10 @@ api:
   cors_origins:
     - "*"
 
+cloud:
+  enabled: false  # Set to true when you deploy to Vercel
+  poll_interval: 60  # seconds between config checks
+
 widgets:
   default_widgets:
     - clock

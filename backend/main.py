@@ -15,6 +15,7 @@ from src.display.display_manager import DisplayManager
 from src.bluetooth.ble_server import BLEServer
 from src.api.server import APIServer
 from src.widgets.widget_manager import WidgetManager
+from src.cloud_sync import CloudSync
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +39,7 @@ class LumyApp:
         self.ble_server = None
         self.api_server = None
         self.widget_manager = None
+        self.cloud_sync = None
         self.running = False
     
     async def initialize(self):
@@ -73,6 +75,11 @@ class LumyApp:
             )
             logger.info("API server initialized")
             
+            # Initialize cloud sync
+            self.cloud_sync = CloudSync(self.config)
+            await self.cloud_sync.initialize()
+            logger.info("Cloud sync initialized")
+            
             logger.info("Lumy initialization complete!")
             
         except Exception as e:
@@ -91,6 +98,7 @@ class LumyApp:
                 self.ble_server.start(),
                 self.api_server.start(),
                 self.widget_manager.start(),
+                self.cloud_sync.start(),
                 self._main_loop()
             )
         except Exception as e:
@@ -118,6 +126,9 @@ class LumyApp:
         self.running = False
         
         # Stop all services
+        if self.cloud_sync:
+            await self.cloud_sync.stop()
+        
         if self.api_server:
             await self.api_server.stop()
         
