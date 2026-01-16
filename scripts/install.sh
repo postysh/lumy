@@ -72,6 +72,8 @@ pip install --upgrade pip
 
 # Install all packages
 pip install RPi.GPIO spidev Pillow
+# Install lgpio backend for gpiozero (required for newer Raspberry Pi OS)
+pip install rpi-lgpio
 pip install gpiozero colorzero
 pip install bleak
 pip install fastapi uvicorn pydantic
@@ -152,6 +154,10 @@ source venv/bin/activate
 echo "  • Running display test..."
 python3 << 'DISPLAY_TEST'
 import sys
+import os
+# Force gpiozero to use lgpio pin factory
+os.environ['GPIOZERO_PIN_FACTORY'] = 'lgpio'
+
 try:
     from waveshare_epd import epd7in3e
     from PIL import Image, ImageDraw, ImageFont
@@ -278,10 +284,18 @@ echo ""
 echo "Step 8/10: Creating GPIO cleanup script..."
 sudo tee /usr/local/bin/lumy-gpio-cleanup.sh > /dev/null <<'GPIOEOF'
 #!/bin/bash
-# Aggressive GPIO cleanup - Waveshare troubleshooting
+# GPIO cleanup - Waveshare troubleshooting
 # See: https://www.waveshare.com/wiki/7.3inch_e-Paper_HAT_(E)_Manual
 
-# Clean up via RPi.GPIO
+# Unexport all GPIO pins via sysfs (most reliable method)
+for pin in /sys/class/gpio/gpio*/; do
+    if [ -d "$pin" ]; then
+        pin_num=$(basename "$pin" | sed 's/gpio//')
+        echo "$pin_num" > /sys/class/gpio/unexport 2>/dev/null || true
+    fi
+done
+
+# Clean up via RPi.GPIO (secondary method)
 python3 << 'PYCLEANUP'
 try:
     import RPi.GPIO as GPIO
@@ -292,16 +306,8 @@ except:
     pass
 PYCLEANUP
 
-# Unexport all GPIO pins directly via sysfs
-for pin in /sys/class/gpio/gpio*/; do
-    if [ -d "$pin" ]; then
-        pin_num=$(basename "$pin" | sed 's/gpio//')
-        echo "$pin_num" > /sys/class/gpio/unexport 2>/dev/null || true
-    fi
-done
-
 # Brief delay for cleanup to complete
-sleep 0.5
+sleep 0.2
 GPIOEOF
 
 sudo chmod +x /usr/local/bin/lumy-gpio-cleanup.sh
@@ -322,6 +328,7 @@ Type=simple
 User=root
 WorkingDirectory=$LUMY_DIR/backend
 Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
+Environment="GPIOZERO_PIN_FACTORY=lgpio"
 ExecStartPre=/usr/local/bin/lumy-gpio-cleanup.sh
 ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
 Restart=always
@@ -347,6 +354,9 @@ cat > "$LUMY_DIR/backend/.env" << EOFENV
 # Lumy Production Configuration
 LUMY_API_URL=$PRODUCTION_API_URL
 LUMY_API_KEY=$PRODUCTION_API_KEY
+
+# GPIO Configuration (use lgpio for newer Raspberry Pi OS)
+GPIOZERO_PIN_FACTORY=lgpio
 
 # Device ID will be auto-generated on first run
 # LUMY_DEVICE_ID=
