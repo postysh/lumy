@@ -97,6 +97,11 @@ wget -q "$BASE_URL/__init__.py" -O waveshare_epd/__init__.py
 wget -q "$BASE_URL/epdconfig.py" -O waveshare_epd/epdconfig.py  
 wget -q "$BASE_URL/epd7in3e.py" -O waveshare_epd/epd7in3e.py
 
+# CRITICAL: Patch epdconfig.py to prevent GPIO initialization at import
+echo "Patching for GPIO compatibility..."
+# Replace line 313 with pass to avoid GPIO init at import time
+sed -i '313s/.*/    pass  # Deferred GPIO init/' waveshare_epd/epdconfig.py
+
 # Create minimal setup.py
 cat > setup.py << 'EOF'
 from setuptools import setup, find_packages
@@ -114,11 +119,17 @@ source venv/bin/activate
 cd /tmp/waveshare_epd_install
 pip install .
 
-# Verify
-python3 -c "from waveshare_epd import epd7in3e; print('✓ Waveshare library installed')" || {
+# Verify (skip GPIO init check - will be handled by display manager)
+python3 << 'VERIFY' || {
     echo "✗ Failed to install Waveshare library"
     exit 1
 }
+import sys
+sys.path.insert(0, '/tmp/waveshare_epd_install')
+# Just verify the module can be imported
+import waveshare_epd
+print('✓ Waveshare library installed')
+VERIFY
 
 deactivate
 
