@@ -74,6 +74,9 @@ pip install --upgrade pip
 echo "  • Installing core packages..."
 pip install RPi.GPIO spidev Pillow
 
+echo "  • Installing GPIO utilities..."
+pip install gpiozero
+
 echo "  • Installing Bluetooth packages..."
 pip install bleak
 
@@ -112,6 +115,23 @@ deactivate
 # Get the actual user (not root if using sudo)
 ACTUAL_USER="${SUDO_USER:-$USER}"
 
+# Create GPIO cleanup script
+echo "Creating GPIO cleanup script..."
+sudo tee /usr/local/bin/lumy-gpio-cleanup.sh > /dev/null <<'GPIOEOF'
+#!/bin/bash
+# Clean up GPIO pins before starting Lumy
+python3 << 'PYCLEANUP'
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.cleanup()
+except:
+    pass
+PYCLEANUP
+GPIOEOF
+
+sudo chmod +x /usr/local/bin/lumy-gpio-cleanup.sh
+
 # Create systemd service
 echo "Creating systemd service..."
 sudo tee /etc/systemd/system/lumy.service > /dev/null <<EOF
@@ -124,6 +144,7 @@ Type=simple
 User=root
 WorkingDirectory=$LUMY_DIR/backend
 Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
+ExecStartPre=/usr/local/bin/lumy-gpio-cleanup.sh
 ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
 Restart=always
 RestartSec=10
