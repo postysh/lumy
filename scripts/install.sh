@@ -48,46 +48,6 @@ sudo raspi-config nonint do_spi 0
 echo "Setting up WiFi AP mode for initial configuration..."
 bash "$LUMY_DIR/scripts/setup-ap-mode.sh"
 
-# Install Waveshare E-Paper library
-echo "Installing Waveshare E-Paper library (optimized for Pi Zero)..."
-TMP_DIR="/tmp/waveshare_install_$$"
-mkdir -p "$TMP_DIR/waveshare_epd"
-cd "$TMP_DIR"
-
-BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python"
-
-echo "Downloading library files..."
-wget -q "$BASE_URL/setup.py" -O setup.py || echo "Warning: setup.py download failed"
-wget -q "$BASE_URL/lib/waveshare_epd/__init__.py" -O waveshare_epd/__init__.py
-wget -q "$BASE_URL/lib/waveshare_epd/epdconfig.py" -O waveshare_epd/epdconfig.py
-wget -q "$BASE_URL/lib/waveshare_epd/epd7in3e.py" -O waveshare_epd/epd7in3e.py
-
-# Create minimal setup.py if needed
-if [ ! -f setup.py ]; then
-    cat > setup.py << 'EOFSETUP'
-from setuptools import setup, find_packages
-setup(
-    name='waveshare-epd',
-    version='1.0',
-    packages=find_packages(),
-    install_requires=['Pillow', 'RPi.GPIO', 'spidev'],
-)
-EOFSETUP
-fi
-
-sudo pip3 install . --break-system-packages 2>/dev/null || {
-    echo "pip install failed, copying files directly..."
-    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
-    sudo cp -r waveshare_epd "$SITE_PACKAGES/"
-}
-
-cd /tmp
-rm -rf "$TMP_DIR"
-
-# Verify installation
-echo "Verifying Waveshare library installation..."
-python3 -c "import waveshare_epd.epd7in3e; print('✓ Waveshare library installed successfully')" || echo "⚠ Warning: Waveshare library may not be installed correctly"
-
 # Determine the correct lumy directory path
 if [ -d "$HOME/lumy" ]; then
     LUMY_DIR="$HOME/lumy"
@@ -125,6 +85,30 @@ pip install pyyaml aiohttp psutil python-dotenv
 
 echo "✓ All Python packages installed"
 
+# Install Waveshare E-Paper library into venv
+echo "Installing Waveshare E-Paper library..."
+TMP_DIR="/tmp/waveshare_install_$$"
+mkdir -p "$TMP_DIR/waveshare_epd"
+cd "$TMP_DIR"
+
+BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python"
+wget -q "$BASE_URL/lib/waveshare_epd/__init__.py" -O waveshare_epd/__init__.py
+wget -q "$BASE_URL/lib/waveshare_epd/epdconfig.py" -O waveshare_epd/epdconfig.py
+wget -q "$BASE_URL/lib/waveshare_epd/epd7in3e.py" -O waveshare_epd/epd7in3e.py
+
+# Copy directly into venv site-packages
+VENV_SITE_PACKAGES="$LUMY_DIR/backend/venv/lib/python*/site-packages"
+cp -r waveshare_epd $VENV_SITE_PACKAGES/
+
+cd /tmp
+rm -rf "$TMP_DIR"
+
+echo "✓ Waveshare library installed"
+
+# Return to backend directory and deactivate venv
+cd "$LUMY_DIR/backend"
+deactivate
+
 # Get the actual user (not root if using sudo)
 ACTUAL_USER="${SUDO_USER:-$USER}"
 
@@ -137,7 +121,7 @@ After=network.target bluetooth.target
 
 [Service]
 Type=simple
-User=$ACTUAL_USER
+User=root
 WorkingDirectory=$LUMY_DIR/backend
 Environment="PATH=$LUMY_DIR/backend/venv/bin:/usr/bin"
 ExecStart=$LUMY_DIR/backend/venv/bin/python3 main.py
