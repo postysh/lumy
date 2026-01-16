@@ -78,28 +78,22 @@ echo "✓ Device registration reset"
 
 echo "Clearing WiFi credentials..."
 
-# Stop AP mode if running
-echo "  • Stopping AP mode..."
+# Stop any running services
+echo "  • Stopping services..."
+sudo systemctl stop lumy.service 2>/dev/null || true
 sudo systemctl stop lumy-ap 2>/dev/null || true
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Remove dhcpcd AP mode configuration
-echo "  • Removing dhcpcd AP config..."
-sudo sed -i '/# Lumy AP Mode Configuration/,/nohook wpa_supplicant/d' /etc/dhcpcd.conf 2>/dev/null || true
+# Clear ALL saved WiFi networks (this is what we want to delete)
+echo "  • Clearing saved WiFi networks..."
 
-# Restart dhcpcd to apply changes
-sudo systemctl restart dhcpcd 2>/dev/null || true
-
-# Clear all WiFi connections
-echo "  • Clearing WiFi connections..."
+# NetworkManager connections
 sudo rm -rf /etc/NetworkManager/system-connections/* 2>/dev/null || true
 
-# Method 2: Clear wpa_supplicant (used by both systems)
-echo "  • Clearing wpa_supplicant..."
+# wpa_supplicant - clear all saved networks
 for conf_file in /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant-wlan0.conf; do
     if [ -f "$conf_file" ]; then
-        sudo cp "$conf_file" "${conf_file}.backup"
         sudo tee "$conf_file" > /dev/null << 'WPAEOF'
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
@@ -108,34 +102,24 @@ WPAEOF
     fi
 done
 
-# Method 3: Clear dhcpcd config
-if [ -f /etc/dhcpcd.conf ]; then
-    sudo sed -i '/^interface wlan0/,/^$/d' /etc/dhcpcd.conf 2>/dev/null || true
-fi
-
-# Method 4: Remove all state/cache files
-sudo rm -rf /var/lib/dhcp/* 2>/dev/null || true
-sudo rm -rf /var/lib/dhcpcd/* 2>/dev/null || true
-sudo rm -rf /var/lib/dhcpcd5/* 2>/dev/null || true
+# Clear WiFi state files
+sudo rm -rf /var/lib/dhcp/*wlan* 2>/dev/null || true
+sudo rm -rf /var/lib/dhcpcd/*wlan* 2>/dev/null || true
+sudo rm -rf /var/lib/dhcpcd5/*wlan* 2>/dev/null || true
 sudo rm -rf /var/lib/wpa_supplicant/* 2>/dev/null || true
 sudo rm -rf /var/lib/NetworkManager/* 2>/dev/null || true
 
-# Method 5: Clear systemd network configs
-sudo rm -f /etc/systemd/network/*wlan* 2>/dev/null || true
+# Remove ImagerSettings (WiFi configured during OS imaging)
+sudo rm -f /boot/firstrun.sh 2>/dev/null || true
+sudo rm -f /boot/firmware/firstrun.sh 2>/dev/null || true
 
-# Method 6: Remove ImagerSettings if present (set during OS imaging)
-if [ -f /boot/firstrun.sh ]; then
-    sudo rm -f /boot/firstrun.sh
-fi
-if [ -f /boot/firmware/firstrun.sh ]; then
-    sudo rm -f /boot/firmware/firstrun.sh
-fi
+# CRITICAL: KEEP the dhcpcd AP mode config (DO NOT DELETE IT)
+# The AP mode config in /etc/dhcpcd.conf should remain so device can go into AP mode
 
-# Method 7: Force complete disconnect
+# Force wlan0 down and restart network
 sudo ip link set wlan0 down 2>/dev/null || true
-sudo rfkill block wifi 2>/dev/null || true
 sleep 1
-sudo rfkill unblock wifi 2>/dev/null || true
+sudo ip link set wlan0 up 2>/dev/null || true
 
 echo "✓ WiFi credentials completely cleared"
 echo ""
