@@ -1,0 +1,53 @@
+# Lumy Configuration File
+
+display:
+  width: 1872
+  height: 1404
+  rotation: 0
+  model: "epd_7in3e"  # Waveshare 7.3inch e-Paper HAT (E)
+  refresh_interval: 300  # seconds between automatic refreshes
+  sleep_after_refresh: true
+  partial_refresh: false  # Not supported on this model
+
+bluetooth:
+  enabled: true
+  device_name: "Lumy Display"
+  service_uuid: "12345678-1234-5678-1234-56789abcdef0"
+  tx_characteristic_uuid: "12345678-1234-5678-1234-56789abcdef1"
+  rx_characteristic_uuid: "12345678-1234-5678-1234-56789abcdef2"
+  max_packet_size: 512
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins:
+    - "*"
+
+widgets:
+  default_widgets:
+    - clock
+    - weather
+    - calendar
+  update_interval: 60  # seconds
+  
+  # Widget-specific settings
+  weather:
+    api_key: ""  # Add your weather API key
+    location: "New York"
+    units: "metric"
+  
+  calendar:
+    max_events: 5
+    days_ahead: 7
+
+paths:
+  data: "data"
+  cache: "cache"
+  widgets: "src/widgets/implementations"
+  fonts: "assets/fonts"
+  images: "assets/images"
+
+logging:
+  level: "INFO"
+  file: "lumy.log"
