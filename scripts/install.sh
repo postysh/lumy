@@ -38,6 +38,10 @@ sudo apt-get install -y libglib2.0-dev libdbus-1-dev pkg-config
 echo "Enabling SPI interface..."
 sudo raspi-config nonint do_spi 0
 
+# Setup WiFi AP mode
+echo "Setting up WiFi AP mode for initial configuration..."
+bash "$LUMY_DIR/scripts/setup-ap-mode.sh"
+
 # Install Waveshare E-Paper library
 echo "Installing Waveshare E-Paper library (optimized for Pi Zero)..."
 TMP_DIR="/tmp/waveshare_install_$$"

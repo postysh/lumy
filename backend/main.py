@@ -21,6 +21,7 @@ from src.api.server import APIServer
 from src.widgets.widget_manager import WidgetManager
 from src.cloud_sync import CloudSync
 from src.device_registration import DeviceRegistration
+from src.wifi_manager import WiFiManager
 
 # Configure logging
 logging.basicConfig(
@@ -46,6 +47,7 @@ class LumyApp:
         self.widget_manager = None
         self.cloud_sync = None
         self.device_registration = None
+        self.wifi_manager = WiFiManager()
         self.running = False
     
     async def initialize(self):
@@ -57,6 +59,15 @@ class LumyApp:
             self.display_manager = DisplayManager(self.config)
             await self.display_manager.initialize()
             logger.info("Display manager initialized")
+            
+            # Check WiFi connectivity
+            logger.info("Checking WiFi connectivity...")
+            if not self.wifi_manager.is_connected():
+                logger.warning("No WiFi connection detected")
+                await self._show_ap_mode_message()
+                return  # Exit initialization, AP mode will handle setup
+            
+            logger.info("WiFi connected")
             
             # Check device registration status
             self.device_registration = DeviceRegistration(self.config)
