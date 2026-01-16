@@ -48,6 +48,7 @@ EOF
 
 # Create AP mode network configuration
 echo "Configuring network for AP mode..."
+sudo mkdir -p /etc/network/interfaces.d
 sudo tee /etc/network/interfaces.d/ap-mode > /dev/null <<'EOF'
 auto wlan0
 iface wlan0 inet static
