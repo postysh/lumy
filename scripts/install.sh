@@ -266,6 +266,12 @@ echo "Step 8/10: Setting up WiFi AP mode..."
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
+# Configure NetworkManager to ignore wlan0 when in AP mode
+sudo tee /etc/NetworkManager/conf.d/lumy-ap.conf > /dev/null <<'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+
 # Configure hostapd
 sudo tee /etc/hostapd/hostapd.conf > /dev/null <<'EOF'
 interface=wlan0
@@ -283,6 +289,11 @@ EOF
 sudo tee /etc/default/hostapd > /dev/null <<'EOF'
 DAEMON_CONF="/etc/hostapd/hostapd.conf"
 EOF
+
+# Unmask and stop hostapd (will be started by lumy-ap service)
+sudo systemctl unmask hostapd 2>/dev/null || true
+sudo systemctl disable hostapd 2>/dev/null || true
+sudo systemctl stop hostapd 2>/dev/null || true
 
 # Configure dnsmasq
 sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
