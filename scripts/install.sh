@@ -81,25 +81,42 @@ echo "✓ Python packages installed"
 echo ""
 
 #===========================================
-# STEP 5: Install Waveshare Library (Official Method)
+# STEP 5: Install Waveshare Library (Lightweight)
 #===========================================
 echo "Step 5/10: Installing Waveshare E-Paper library..."
 
-# Clone official Waveshare repo
+# Download only the Python library files we need (not the entire 46MB repo)
 cd /tmp
-rm -rf e-Paper
-git clone --depth 1 https://github.com/waveshare/e-Paper.git
-cd e-Paper/RaspberryPi_JetsonNano/python
+rm -rf waveshare_epd_install
+mkdir -p waveshare_epd_install/waveshare_epd
+cd waveshare_epd_install
 
-# Install using their setup.py into our venv
+# Download library files directly
+BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd"
+wget -q "$BASE_URL/__init__.py" -O waveshare_epd/__init__.py
+wget -q "$BASE_URL/epdconfig.py" -O waveshare_epd/epdconfig.py  
+wget -q "$BASE_URL/epd7in3e.py" -O waveshare_epd/epd7in3e.py
+
+# Create minimal setup.py
+cat > setup.py << 'EOF'
+from setuptools import setup, find_packages
+setup(
+    name='waveshare-epd',
+    version='1.0',
+    packages=find_packages(),
+    install_requires=['Pillow', 'RPi.GPIO', 'spidev'],
+)
+EOF
+
+# Install into venv
 cd "$LUMY_DIR/backend"
 source venv/bin/activate
-cd /tmp/e-Paper/RaspberryPi_JetsonNano/python
+cd /tmp/waveshare_epd_install
 pip install .
 
-# Verify installation
+# Verify
 python3 -c "from waveshare_epd import epd7in3e; print('✓ Waveshare library installed')" || {
-    echo "Failed to install Waveshare library"
+    echo "✗ Failed to install Waveshare library"
     exit 1
 }
 
@@ -107,7 +124,7 @@ deactivate
 
 # Cleanup
 cd /tmp
-rm -rf e-Paper
+rm -rf waveshare_epd_install
 
 echo ""
 
