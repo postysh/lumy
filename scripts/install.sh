@@ -49,7 +49,7 @@ sudo apt-get install -y libopenjp2-7 libtiff6 || true
 sudo apt-get install -y python3-lgpio python3-gpiozero
 sudo apt-get install -y bluetooth bluez libbluetooth-dev
 sudo apt-get install -y libglib2.0-dev libdbus-1-dev pkg-config
-sudo apt-get install -y hostapd dnsmasq
+sudo apt-get install -y hostapd dnsmasq iw wireless-tools
 echo "✓ System packages installed"
 echo ""
 
@@ -266,19 +266,15 @@ echo "Step 8/10: Setting up WiFi AP mode..."
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Configure hostapd for Pi Zero 2 W
+# Configure hostapd for Pi Zero 2 W (tested working config)
 sudo tee /etc/hostapd/hostapd.conf > /dev/null <<'EOF'
 interface=wlan0
-driver=nl80211
 ssid=Lumy-Setup
-hw_mode=g
 channel=6
-ieee80211n=1
-wmm_enabled=1
+hw_mode=g
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
-wpa=0
 EOF
 
 # Stop and disable services that interfere with AP mode
@@ -289,11 +285,17 @@ sudo systemctl disable wpa_supplicant 2>/dev/null || true
 sudo systemctl unmask hostapd 2>/dev/null || true
 sudo systemctl unmask dnsmasq 2>/dev/null || true
 
-# Configure dnsmasq
+# Configure dnsmasq for DHCP and DNS
 sudo cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
 sudo tee /etc/dnsmasq.conf > /dev/null <<'EOF'
 interface=wlan0
+bind-interfaces
+server=8.8.8.8
+domain-needed
+bogus-priv
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+dhcp-option=3,192.168.4.1
+dhcp-option=6,192.168.4.1
 address=/#/192.168.4.1
 EOF
 
@@ -305,38 +307,67 @@ set -e
 echo "=== Starting Lumy AP Mode ==="
 
 # Kill any interfering processes
+echo "Stopping conflicting services..."
+systemctl stop NetworkManager 2>/dev/null || true
+systemctl stop wpa_supplicant 2>/dev/null || true
 pkill wpa_supplicant || true
 pkill NetworkManager || true
 pkill dhcpcd || true
+sleep 2
 
 # Unblock WiFi
+echo "Unblocking WiFi..."
 rfkill unblock wifi
 sleep 1
 
-# Reset interface
+# Reset interface completely
+echo "Resetting wlan0 interface..."
 ip link set wlan0 down
 sleep 1
 ip addr flush dev wlan0
 sleep 1
 
 # Configure interface for AP mode
-ip addr add 192.168.4.1/24 dev wlan0
+echo "Configuring wlan0 for AP mode..."
+ip addr add 192.168.4.1/24 broadcast 192.168.4.255 dev wlan0
 ip link set wlan0 up
 sleep 2
+
+# Verify interface is up
+if ! ip addr show wlan0 | grep -q "192.168.4.1"; then
+    echo "ERROR: Failed to configure wlan0"
+    exit 1
+fi
 
 # Start hostapd
 echo "Starting hostapd..."
 systemctl start hostapd
-sleep 3
+sleep 4
 
-# Start dnsmasq
+# Check hostapd status
+if ! systemctl is-active --quiet hostapd; then
+    echo "ERROR: hostapd failed to start"
+    journalctl -u hostapd -n 20 --no-pager
+    exit 1
+fi
+
+# Start dnsmasq for DHCP
 echo "Starting dnsmasq..."
 systemctl start dnsmasq
-sleep 1
+sleep 2
+
+# Check dnsmasq status
+if ! systemctl is-active --quiet dnsmasq; then
+    echo "ERROR: dnsmasq failed to start"
+    journalctl -u dnsmasq -n 20 --no-pager
+    exit 1
+fi
 
 echo "=== AP Mode Started Successfully ==="
 echo "SSID: $(grep ^ssid= /etc/hostapd/hostapd.conf | cut -d= -f2)"
 echo "IP: 192.168.4.1"
+echo "Interface status:"
+ip addr show wlan0
 APSCRIPT
 
 sudo chmod +x /usr/local/bin/lumy-start-ap.sh
