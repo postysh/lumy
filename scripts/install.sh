@@ -146,11 +146,9 @@ cd "$LUMY_DIR/backend"
 echo "  • Cleaning GPIO pins..."
 sudo /usr/local/bin/lumy-gpio-cleanup.sh
 
-# Activate venv for test
-source venv/bin/activate
-
 echo "  • Running display test..."
-python3 << 'DISPLAY_TEST'
+# MUST run as root for GPIO access
+sudo "$LUMY_DIR/backend/venv/bin/python3" << 'DISPLAY_TEST'
 import sys
 import os
 # Force gpiozero to use RPi.GPIO backend (already installed)
@@ -203,7 +201,6 @@ if [ $? -ne 0 ]; then
     echo "  2. Reboot and try again (SPI may need reboot)"
     echo "  3. Check hardware connections"
     echo ""
-    deactivate
     exit 1
 fi
 
