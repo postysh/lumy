@@ -20,6 +20,7 @@ from src.bluetooth.ble_server import BLEServer
 from src.api.server import APIServer
 from src.widgets.widget_manager import WidgetManager
 from src.cloud_sync import CloudSync
+from src.device_registration import DeviceRegistration
 
 # Configure logging
 logging.basicConfig(
@@ -44,17 +45,33 @@ class LumyApp:
         self.api_server = None
         self.widget_manager = None
         self.cloud_sync = None
+        self.device_registration = None
         self.running = False
     
     async def initialize(self):
         """Initialize all components"""
         logger.info("Initializing Lumy...")
-        
+
         try:
             # Initialize display manager
             self.display_manager = DisplayManager(self.config)
             await self.display_manager.initialize()
             logger.info("Display manager initialized")
+            
+            # Check device registration status
+            self.device_registration = DeviceRegistration(self.config)
+            device_id = self.device_registration.get_or_create_device_id()
+            
+            # Check if device is registered
+            if not await self.device_registration.check_registration_status():
+                logger.info("Device not registered - starting registration flow")
+                registered = await self.device_registration.initialize_and_register(self.display_manager)
+                
+                if not registered:
+                    logger.error("Device registration failed or timed out")
+                    # Continue anyway, allow manual configuration
+            else:
+                logger.info(f"Device {device_id} is already registered")
             
             # Initialize widget manager
             self.widget_manager = WidgetManager(self.config, self.display_manager)
