@@ -35,9 +35,11 @@ def test_display():
         print("✓ Display initialized")
         
         # Clear display
-        print("Clearing display...")
+        print("Clearing display (this takes 30-60 seconds, please wait)...")
+        start_time = time.time()
         epd.Clear()
-        print("✓ Display cleared")
+        clear_time = time.time() - start_time
+        print(f"✓ Display cleared (took {clear_time:.1f} seconds)")
         
         # Create test image
         print("Creating test image...")
@@ -80,10 +82,12 @@ def test_display():
             draw.text((x, y_start + box_size + 20), name, font=font_small, fill=(0, 0, 0))
         
         # Display image
-        print("Displaying test pattern...")
+        print("Displaying test pattern (this takes 20-40 seconds, please wait)...")
+        start_time = time.time()
         buffer = epd.getbuffer(image)
         epd.display(buffer)
-        print("✓ Test pattern displayed")
+        display_time = time.time() - start_time
+        print(f"✓ Test pattern displayed (took {display_time:.1f} seconds)")
         
         # Sleep
         print("Putting display to sleep...")
