@@ -57,20 +57,31 @@ echo ""
 #===========================================
 echo "Step 3/6: Installing Waveshare e-Paper library..."
 
-# Clone official Waveshare repository
-cd /tmp
-rm -rf e-Paper
-git clone https://github.com/waveshare/e-Paper
-cd e-Paper/RaspberryPi_JetsonNano/python
-
 # Install Python dependencies
 pip3 install pillow --break-system-packages
 pip3 install RPi.GPIO --break-system-packages
 pip3 install spidev --break-system-packages
 
+# Download only the necessary files (not the entire 100MB+ repo)
+cd /tmp
+rm -rf waveshare_epd_install
+mkdir -p waveshare_epd_install/waveshare_epd
+
+echo "  • Downloading library files..."
+cd waveshare_epd_install/waveshare_epd
+
+# Base URL for raw files
+BASE_URL="https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd"
+
+# Download only the files we need for 7.3inch e-Paper HAT (E)
+wget -q "${BASE_URL}/__init__.py" -O __init__.py
+wget -q "${BASE_URL}/epdconfig.py" -O epdconfig.py
+wget -q "${BASE_URL}/epd7in3e.py" -O epd7in3e.py
+
+echo "  • Installing library..."
 # Copy library files to system location
 mkdir -p /usr/local/lib/python3.11/dist-packages/waveshare_epd
-cp -r lib/waveshare_epd/* /usr/local/lib/python3.11/dist-packages/waveshare_epd/
+cp -r /tmp/waveshare_epd_install/waveshare_epd/* /usr/local/lib/python3.11/dist-packages/waveshare_epd/
 
 echo "✓ Waveshare library installed"
 echo ""
