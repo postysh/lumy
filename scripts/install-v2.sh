@@ -31,11 +31,20 @@ echo "✓ System packages installed"
 echo ""
 
 #===========================================
-# STEP 2: Enable SPI
+# STEP 2: Enable SPI & Fix WiFi Driver
 #===========================================
 echo "Step 2/8: Enabling SPI interface..."
 sudo raspi-config nonint do_spi 0
 echo "✓ SPI enabled"
+
+echo "  • Fixing WiFi driver issues..."
+# Fix known brcmfmac driver issues on Pi Zero 2 W
+sudo mkdir -p /etc/modprobe.d
+sudo tee /etc/modprobe.d/brcmfmac.conf > /dev/null <<'WIFI_FIX'
+# Fix WiFi connection issues on Pi Zero 2 W
+options brcmfmac roamoff=1 feature_disable=0x82000
+WIFI_FIX
+echo "✓ WiFi driver configured"
 echo ""
 
 #===========================================

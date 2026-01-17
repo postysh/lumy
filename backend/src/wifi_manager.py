@@ -86,11 +86,12 @@ class WiFiManager:
 driver=nl80211
 ssid={self.ap_ssid}
 hw_mode=g
-channel=7
+channel=6
 wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
+country_code=US
 wpa=0
 """
             subprocess.run(['sudo', 'tee', '/etc/hostapd/hostapd.conf'], 
