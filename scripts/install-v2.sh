@@ -220,11 +220,9 @@ echo "Step 7/8: Setting up WiFi Access Point..."
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Configure dhcpcd to not manage wlan0 (CRITICAL - prevents interference)
-echo "  • Configuring dhcpcd..."
-if ! grep -q "^denyinterfaces wlan0" /etc/dhcpcd.conf; then
-    sudo sed -i '1i# Lumy: dhcpcd must not manage wlan0 (used for AP mode)\ndenyinterfaces wlan0\n' /etc/dhcpcd.conf
-fi
+# NOTE: We do NOT add denyinterfaces here anymore
+# It will be added/removed dynamically by the AP startup/stop scripts
+echo "  • Configuring dhcpcd (dynamic management)..."
 
 # Configure NetworkManager to not manage wlan0 (if NetworkManager is installed)
 echo "  • Configuring NetworkManager..."
@@ -281,10 +279,17 @@ set -e
 
 echo "=== Starting Lumy AP Mode ==="
 
+# Add denyinterfaces to dhcpcd.conf (only for AP mode)
+echo "Disabling dhcpcd management of wlan0..."
+if ! grep -q "^denyinterfaces wlan0" /etc/dhcpcd.conf; then
+    sed -i '1i# Lumy AP Mode: dhcpcd must not manage wlan0\ndenyinterfaces wlan0\n' /etc/dhcpcd.conf
+fi
+
 # Stop services that interfere with AP mode
 echo "Stopping conflicting services..."
 systemctl stop NetworkManager 2>/dev/null || true
 systemctl stop wpa_supplicant 2>/dev/null || true
+systemctl stop dhcpcd 2>/dev/null || true
 pkill wpa_supplicant 2>/dev/null || true
 sleep 1
 
@@ -360,6 +365,31 @@ APSCRIPT
 
 sudo chmod +x /usr/local/bin/lumy-start-ap.sh
 
+# Create AP stop script
+sudo tee /usr/local/bin/lumy-stop-ap.sh > /dev/null <<'APSTOP'
+#!/bin/bash
+echo "=== Stopping Lumy AP Mode ==="
+
+# Stop services
+systemctl stop dnsmasq 2>/dev/null || true
+systemctl stop hostapd 2>/dev/null || true
+
+# Remove denyinterfaces from dhcpcd.conf
+sed -i '/# Lumy AP Mode: dhcpcd must not manage wlan0/d' /etc/dhcpcd.conf
+sed -i '/^denyinterfaces wlan0$/d' /etc/dhcpcd.conf
+
+# Bring wlan0 down
+ip link set wlan0 down 2>/dev/null || true
+ip addr flush dev wlan0 2>/dev/null || true
+
+# Restart dhcpcd to restore normal WiFi client management
+systemctl restart dhcpcd
+
+echo "=== AP Mode Stopped - WiFi client mode restored ==="
+APSTOP
+
+sudo chmod +x /usr/local/bin/lumy-stop-ap.sh
+
 # Create lumy-ap service (called by wifi_manager.py)
 echo "  • Creating lumy-ap service..."
 sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'APSERVICE'
@@ -372,7 +402,7 @@ Wants=dhcpcd.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/lumy-start-ap.sh
-ExecStop=/bin/bash -c 'systemctl stop dnsmasq; systemctl stop hostapd'
+ExecStop=/usr/local/bin/lumy-stop-ap.sh
 StandardOutput=journal
 StandardError=journal
 
