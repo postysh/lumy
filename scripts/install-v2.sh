@@ -222,14 +222,8 @@ sudo systemctl stop dnsmasq 2>/dev/null || true
 
 # Configure dhcpcd for static IP (CRITICAL - prevents wpa_supplicant interference)
 echo "  • Configuring dhcpcd..."
-if ! grep -q "^interface wlan0$" /etc/dhcpcd.conf; then
-    sudo tee -a /etc/dhcpcd.conf > /dev/null <<'DHCPCD'
-
-# Lumy AP Mode Configuration
-interface wlan0
-    static ip_address=192.168.4.1/24
-    nohook wpa_supplicant
-DHCPCD
+if ! grep -q "^denyinterfaces wlan0" /etc/dhcpcd.conf; then
+    sudo sed -i '1i# Lumy: dhcpcd must not manage wlan0 (used for AP mode)\ndenyinterfaces wlan0\n' /etc/dhcpcd.conf
 fi
 
 # Configure hostapd (minimal, proven config)
@@ -275,14 +269,24 @@ set -e
 
 echo "=== Starting Lumy AP Mode ==="
 
+# Stop services that interfere with AP mode
+echo "Stopping conflicting services..."
+systemctl stop NetworkManager 2>/dev/null || true
+systemctl stop wpa_supplicant 2>/dev/null || true
+pkill wpa_supplicant 2>/dev/null || true
+sleep 1
+
 # Unblock WiFi
 rfkill unblock wifi
 sleep 1
 
-# Restart dhcpcd to apply static IP
-echo "Restarting dhcpcd..."
-systemctl restart dhcpcd
-sleep 3
+# Bring wlan0 down, flush any existing IP, configure static IP
+echo "Configuring wlan0 with static IP..."
+ip link set wlan0 down 2>/dev/null || true
+ip addr flush dev wlan0 2>/dev/null || true
+ip addr add 192.168.4.1/24 dev wlan0
+ip link set wlan0 up
+sleep 2
 
 # Verify wlan0 has static IP
 if ! ip addr show wlan0 | grep -q "192.168.4.1"; then

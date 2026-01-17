@@ -123,8 +123,8 @@ sudo rm -f /boot/firstrun.sh 2>/dev/null || true
 sudo rm -f /boot/firmware/firstrun.sh 2>/dev/null || true
 sudo rm -f /boot/firmware/wpa_supplicant.conf 2>/dev/null || true
 
-# STEP 6: Restart dhcpcd to apply AP mode config
-echo "  • Restarting dhcpcd for AP mode..."
+# STEP 6: Ensure dhcpcd is running (but it won't manage wlan0 due to denyinterfaces)
+echo "  • Ensuring dhcpcd is running..."
 sudo systemctl restart dhcpcd 2>/dev/null || true
 
 # STEP 7: Enable AP mode services
