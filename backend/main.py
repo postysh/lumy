@@ -169,19 +169,17 @@ class LumyApp:
             image = Image.new('RGB', (self.display_manager.width, self.display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (LARGE sizes that fit 800x480 display)
+            # Load fonts sized to fit 800x480 screen
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 72)
-                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 64)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 48)
-                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 38)
-                logger.info("Fonts loaded successfully - title:72pt, large:64pt, medium:48pt, small:38pt")
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 60)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 56)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 42)
+                logger.info("Fonts loaded successfully - title:60pt, large:56pt, medium:42pt")
             except Exception as e:
                 logger.error(f"FONT LOADING FAILED: {e} - Using default fonts which are TOO SMALL")
                 font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
             
             center_x = self.display_manager.width // 2
             
@@ -189,41 +187,42 @@ class LumyApp:
             title_text = "WiFi Setup Required"
             title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
             title_width = title_bbox[2] - title_bbox[0]
-            draw.text((center_x - title_width // 2, 10), title_text, font=font_title, fill=(0, 0, 0))
+            draw.text((center_x - title_width // 2, 20), title_text, font=font_title, fill=(0, 0, 0))
             
-            # Instructions
+            # Step 1
             inst1 = "1. Connect to WiFi:"
             inst1_bbox = draw.textbbox((0, 0), inst1, font=font_medium)
             inst1_width = inst1_bbox[2] - inst1_bbox[0]
-            draw.text((center_x - inst1_width // 2, 125), inst1, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst1_width // 2, 110), inst1, font=font_medium, fill=(0, 0, 0))
             
-            # WiFi name (highlighted)
+            # WiFi SSID in box (with proper spacing)
             ssid_bbox = draw.textbbox((0, 0), ap_ssid, font=font_large)
             ssid_width = ssid_bbox[2] - ssid_bbox[0]
             ssid_height = ssid_bbox[3] - ssid_bbox[1]
             
             # Draw box around SSID
-            box_padding = 20
-            box_y = 195
+            box_padding = 18
+            box_y = 170
             draw.rectangle([
                 center_x - ssid_width // 2 - box_padding,
                 box_y - box_padding,
                 center_x + ssid_width // 2 + box_padding,
                 box_y + ssid_height + box_padding
-            ], outline=(0, 100, 200), width=6)
+            ], outline=(0, 100, 200), width=5)
             
             draw.text((center_x - ssid_width // 2, box_y), ap_ssid, font=font_large, fill=(0, 100, 200))
             
-            # More instructions
+            # Step 2
             inst2 = "2. Go to: 192.168.4.1"
             inst2_bbox = draw.textbbox((0, 0), inst2, font=font_medium)
             inst2_width = inst2_bbox[2] - inst2_bbox[0]
-            draw.text((center_x - inst2_width // 2, 315), inst2, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst2_width // 2, 280), inst2, font=font_medium, fill=(0, 0, 0))
             
+            # Step 3
             inst3 = "3. Enter WiFi password"
             inst3_bbox = draw.textbbox((0, 0), inst3, font=font_medium)
             inst3_width = inst3_bbox[2] - inst3_bbox[0]
-            draw.text((center_x - inst3_width // 2, 385), inst3, font=font_medium, fill=(0, 0, 0))
+            draw.text((center_x - inst3_width // 2, 350), inst3, font=font_medium, fill=(0, 0, 0))
             
             # Display image
             await self.display_manager.display_image(image)
