@@ -256,7 +256,10 @@ echo "  • Configuring dnsmasq..."
 sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
 sudo tee /etc/dnsmasq.conf > /dev/null <<'DNSMASQ'
 interface=wlan0
+bind-interfaces
 dhcp-range=192.168.4.10,192.168.4.250,255.255.255.0,24h
+dhcp-option=3,192.168.4.1
+dhcp-option=6,192.168.4.1
 # Captive portal DNS redirects
 address=/connectivitycheck.gstatic.com/192.168.4.1
 address=/captive.apple.com/192.168.4.1
@@ -274,8 +277,17 @@ Wants=dhcpcd.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -c 'rfkill unblock wifi && sleep 1 && systemctl restart dhcpcd && sleep 2 && systemctl start hostapd && sleep 2 && systemctl start dnsmasq'
-ExecStop=/usr/bin/bash -c 'systemctl stop hostapd; systemctl stop dnsmasq'
+ExecStartPre=/usr/sbin/rfkill unblock wifi
+ExecStartPre=/bin/sleep 1
+ExecStartPre=/bin/systemctl restart dhcpcd
+ExecStartPre=/bin/sleep 3
+ExecStart=/bin/systemctl start hostapd
+ExecStartPost=/bin/sleep 2
+ExecStartPost=/bin/systemctl start dnsmasq
+ExecStop=/bin/systemctl stop dnsmasq
+ExecStop=/bin/systemctl stop hostapd
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
