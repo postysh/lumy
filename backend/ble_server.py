@@ -82,14 +82,30 @@ network={{
     def start(self):
         """Start the BLE server"""
         print("Starting Lumy BLE Server...")
-        print(f"Device Name: {self.adapter.name}")
-        print(f"Device Address: {self.adapter.address}")
+        
+        # Ensure Bluetooth is powered on
+        try:
+            print(f"Adapter: {self.adapter.address}")
+            print(f"Powered: {self.adapter.powered}")
+            
+            if not self.adapter.powered:
+                print("Powering on Bluetooth adapter...")
+                # Use bluetoothctl instead of dbus
+                subprocess.run(['sudo', 'bluetoothctl', 'power', 'on'], check=True)
+                time.sleep(1)
+                
+        except Exception as e:
+            print(f"Warning: Could not check/set adapter power: {e}")
+            print("Continuing anyway...")
         
         # Create BLE peripheral
         periph = peripheral.Peripheral(
             self.adapter.address,
             local_name='Lumy-Setup'
         )
+        
+        # Don't let bluezero try to power on the adapter
+        periph.dongle.powered = True  # Tell it it's already powered
         
         # Add Lumy service
         periph.add_service(srv_id=1, uuid=LUMY_SERVICE_UUID, primary=True)
@@ -117,10 +133,16 @@ network={{
         )
         
         # Start advertising
-        periph.publish()
-        
-        print("BLE server started and advertising...")
-        print("Waiting for connections...")
+        try:
+            periph.publish()
+            print("✅ BLE server started and advertising as 'Lumy-Setup'")
+            print("Waiting for connections...")
+        except Exception as e:
+            print(f"❌ Failed to start advertising: {e}")
+            print("Trying alternative approach...")
+            # If publish fails, try using hciconfig
+            subprocess.run(['sudo', 'hciconfig', 'hci0', 'leadv', '3'], check=False)
+            raise
         
         # Keep running
         try:

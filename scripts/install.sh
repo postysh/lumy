@@ -126,15 +126,18 @@ cat > /etc/systemd/system/lumy-ble.service << EOF
 [Unit]
 Description=Lumy Bluetooth LE Setup Service
 After=bluetooth.target
+Requires=bluetooth.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/home/$USER/lumy/backend
-ExecStartPre=/usr/sbin/rfkill unblock bluetooth
+ExecStartPre=/bin/sh -c '/usr/sbin/rfkill unblock bluetooth && sleep 1 && /usr/bin/bluetoothctl power on && sleep 1'
 ExecStart=/usr/bin/python3 ble_server.py
 Restart=on-failure
-RestartSec=5
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
