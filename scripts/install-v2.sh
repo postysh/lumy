@@ -257,9 +257,11 @@ sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
 sudo tee /etc/dnsmasq.conf > /dev/null <<'DNSMASQ'
 interface=wlan0
 bind-interfaces
+listen-address=192.168.4.1
 dhcp-range=192.168.4.10,192.168.4.250,255.255.255.0,24h
 dhcp-option=3,192.168.4.1
 dhcp-option=6,192.168.4.1
+dhcp-authoritative
 # Captive portal DNS redirects
 address=/connectivitycheck.gstatic.com/192.168.4.1
 address=/captive.apple.com/192.168.4.1
@@ -294,7 +296,7 @@ echo "wlan0 configured with 192.168.4.1"
 # Start hostapd
 echo "Starting hostapd..."
 systemctl start hostapd
-sleep 3
+sleep 5
 
 # Verify hostapd is running
 if ! systemctl is-active --quiet hostapd; then
@@ -305,10 +307,21 @@ fi
 
 echo "hostapd started successfully"
 
+# Wait for AP interface to be fully operational
+echo "Waiting for AP interface to stabilize..."
+sleep 3
+
+# Verify wlan0 is still UP with correct IP
+if ! ip addr show wlan0 | grep -q "192.168.4.1"; then
+    echo "ERROR: wlan0 lost static IP after hostapd start"
+    ip addr show wlan0
+    exit 1
+fi
+
 # Start dnsmasq
 echo "Starting dnsmasq..."
 systemctl start dnsmasq
-sleep 2
+sleep 3
 
 # Verify dnsmasq is running
 if ! systemctl is-active --quiet dnsmasq; then
@@ -318,6 +331,14 @@ if ! systemctl is-active --quiet dnsmasq; then
 fi
 
 echo "dnsmasq started successfully"
+
+# Final verification: Check dnsmasq is listening on DHCP port
+if netstat -uln | grep -q ":67 "; then
+    echo "✓ dnsmasq confirmed listening on DHCP port 67"
+else
+    echo "WARNING: dnsmasq may not be listening on port 67"
+fi
+
 echo "=== AP Mode Started Successfully ==="
 APSCRIPT
 
