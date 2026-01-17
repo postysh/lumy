@@ -74,35 +74,65 @@ echo "✓ Device registration reset"
 
 echo "Clearing WiFi credentials..."
 
-# Clear wpa_supplicant - remove all saved networks
-for conf_file in /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant-wlan0.conf; do
+# STEP 1: Stop and disable ALL WiFi client services
+echo "  • Stopping WiFi services..."
+sudo systemctl stop wpa_supplicant 2>/dev/null || true
+sudo systemctl disable wpa_supplicant 2>/dev/null || true
+sudo systemctl stop NetworkManager 2>/dev/null || true
+sudo systemctl disable NetworkManager 2>/dev/null || true
+
+# Kill any running wpa_supplicant processes
+sudo pkill -9 wpa_supplicant 2>/dev/null || true
+sudo pkill -9 NetworkManager 2>/dev/null || true
+
+# STEP 2: Disconnect wlan0 completely
+echo "  • Disconnecting wlan0..."
+sudo ip link set wlan0 down 2>/dev/null || true
+sudo ip addr flush dev wlan0 2>/dev/null || true
+
+# STEP 3: Clear ALL WiFi configuration files
+echo "  • Clearing WiFi configs..."
+
+# Clear wpa_supplicant - COMPLETELY
+for conf_file in /etc/wpa_supplicant/*.conf; do
     if [ -f "$conf_file" ]; then
-        sudo tee "$conf_file" > /dev/null << 'WPAEOF'
+        sudo rm -f "$conf_file"
+    fi
+done
+
+# Recreate minimal wpa_supplicant.conf
+sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << 'WPAEOF'
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=US
 WPAEOF
-    fi
-done
 
 # Clear NetworkManager connections
 sudo rm -rf /etc/NetworkManager/system-connections/* 2>/dev/null || true
 
-# Clear WiFi state files
-sudo rm -rf /var/lib/dhcp/*wlan* 2>/dev/null || true
-sudo rm -rf /var/lib/dhcpcd/*wlan* 2>/dev/null || true
-sudo rm -rf /var/lib/dhcpcd5/*wlan* 2>/dev/null || true
+# STEP 4: Clear ALL WiFi state and lease files
+echo "  • Clearing WiFi state files..."
+sudo rm -rf /var/lib/dhcp/* 2>/dev/null || true
+sudo rm -rf /var/lib/dhcpcd/* 2>/dev/null || true
+sudo rm -rf /var/lib/dhcpcd5/* 2>/dev/null || true
 sudo rm -rf /var/lib/wpa_supplicant/* 2>/dev/null || true
 sudo rm -rf /var/lib/NetworkManager/* 2>/dev/null || true
 
-# Remove Imager-configured WiFi
+# STEP 5: Remove Imager-configured WiFi
 sudo rm -f /boot/firstrun.sh 2>/dev/null || true
 sudo rm -f /boot/firmware/firstrun.sh 2>/dev/null || true
+sudo rm -f /boot/firmware/wpa_supplicant.conf 2>/dev/null || true
 
-# IMPORTANT: Keep /etc/dhcpcd.conf AP mode config intact
-# This is what allows the device to go into AP mode
+# STEP 6: Restart dhcpcd to apply AP mode config
+echo "  • Restarting dhcpcd for AP mode..."
+sudo systemctl restart dhcpcd 2>/dev/null || true
 
-echo "✓ WiFi credentials cleared (AP mode config preserved)"
+# STEP 7: Enable AP mode services
+echo "  • Enabling AP mode services..."
+sudo systemctl enable hostapd 2>/dev/null || true
+sudo systemctl enable dnsmasq 2>/dev/null || true
+
+echo "✓ WiFi completely cleared - AP mode will start on reboot"
 echo ""
 echo "======================================"
 echo "  ✓ Factory Reset Complete"
