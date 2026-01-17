@@ -16,6 +16,22 @@ USER="${SUDO_USER:-$USER}"
 echo "Installing for user: $USER"
 echo ""
 
+# Check if we should clear WiFi (for production/customer devices)
+CLEAR_WIFI=false
+if [ "$1" == "--clear-wifi" ]; then
+    CLEAR_WIFI=true
+    echo "⚠️  WiFi will be cleared after installation"
+    echo "⚠️  You will lose SSH access after reboot"
+    echo ""
+    echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+    sleep 5
+else
+    echo "ℹ️  WiFi will be preserved (development mode)"
+    echo "ℹ️  Use: sudo bash install.sh --clear-wifi"
+    echo "ℹ️  to clear WiFi for customer/production devices"
+    echo ""
+fi
+
 #===========================================
 # Step 1: System Packages
 #===========================================
@@ -148,14 +164,54 @@ echo "==========================================="
 echo "✓ INSTALLATION COMPLETE"
 echo "==========================================="
 echo ""
+
+# Clear WiFi if requested (for production/customer devices)
+if [ "$CLEAR_WIFI" = true ]; then
+    echo "Clearing WiFi credentials for customer setup..."
+    
+    # Stop WiFi services
+    systemctl stop wpa_supplicant 2>/dev/null || true
+    systemctl disable wpa_supplicant 2>/dev/null || true
+    systemctl mask wpa_supplicant 2>/dev/null || true
+    
+    # Remove WiFi configurations
+    rm -f /etc/wpa_supplicant/wpa_supplicant.conf 2>/dev/null || true
+    rm -f /etc/wpa_supplicant/wpa_supplicant-wlan0.conf 2>/dev/null || true
+    rm -f /boot/firmware/wpa_supplicant.conf 2>/dev/null || true
+    
+    # Create empty wpa_supplicant.conf
+    cat > /etc/wpa_supplicant/wpa_supplicant.conf << 'WPACONF'
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+WPACONF
+    
+    echo "✓ WiFi cleared - device ready for customer setup"
+    echo ""
+    echo "⚠️  IMPORTANT: You will lose SSH access after reboot!"
+    echo ""
+fi
+
 echo "The system will reboot in 10 seconds."
 echo ""
-echo "After reboot:"
-echo "  1. Device will advertise as 'Lumy-Setup' via Bluetooth"
-echo "  2. Open the Lumy Desktop app on your Mac"
-echo "  3. Scan for devices and connect"
-echo "  4. Send WiFi credentials"
-echo "  5. Device will reboot and show registration code"
+
+if [ "$CLEAR_WIFI" = true ]; then
+    echo "After reboot (NO WiFi):"
+    echo "  1. Device will advertise as 'Lumy-Setup' via Bluetooth"
+    echo "  2. Open Lumy Desktop app on your Mac"
+    echo "  3. Scan for devices and connect"
+    echo "  4. Send WiFi credentials via Bluetooth"
+    echo "  5. Device will reboot and connect to WiFi"
+    echo "  6. Display will show registration code"
+else
+    echo "After reboot (WiFi preserved):"
+    echo "  1. You can still SSH in: ssh $USER@lumy.local"
+    echo "  2. Device will also advertise via Bluetooth"
+    echo "  3. Test Bluetooth setup with Lumy Desktop app"
+    echo "  4. When ready for production, run:"
+    echo "     sudo bash scripts/install.sh --clear-wifi"
+fi
+
 echo ""
 echo "Press Ctrl+C to cancel reboot..."
 sleep 10

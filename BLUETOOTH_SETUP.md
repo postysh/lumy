@@ -36,6 +36,8 @@ ssh lumy@lumy.local
 - SSH to `lumy@raspberrypi.local`
 
 ### 3. Run Installer
+
+**For Development/Testing (preserves WiFi):**
 ```bash
 cd ~
 git clone https://github.com/postysh/lumy.git
@@ -43,7 +45,36 @@ cd lumy
 sudo bash scripts/install.sh
 ```
 
+This keeps your WiFi so you can still SSH in after reboot to test and debug.
+
+**For Production/Customer Devices (clears WiFi):**
+```bash
+sudo bash scripts/install.sh --clear-wifi
+```
+
+This removes WiFi credentials so the device is ready for customer Bluetooth setup. **You will lose SSH access after reboot!**
+
 Installation takes ~10 minutes, then auto-reboots.
+
+---
+
+## Factory Reset (for Customer Devices)
+
+After testing, when you're ready to ship a device to a customer:
+
+```bash
+ssh lumy@lumy.local
+cd ~/lumy
+sudo bash scripts/factory-reset.sh
+```
+
+This will:
+- Clear all WiFi credentials
+- Reset device to BLE setup mode
+- Reboot automatically
+- **You will lose SSH access!**
+
+After reboot, the device is ready for the customer to set up via Bluetooth.
 
 ---
 
