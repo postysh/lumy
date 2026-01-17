@@ -153,21 +153,21 @@ try:
     image = Image.new('RGB', (800, 480), color=(255, 255, 255))
     draw = ImageDraw.Draw(image)
     
-    # Use large, readable fonts
+    # Use large, readable fonts that fit 800x480
     try:
-        font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 80)
-        font_subtitle = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 48)
+        font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 72)
+        font_subtitle = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 44)
     except:
         font_title = ImageFont.load_default()
         font_subtitle = ImageFont.load_default()
 
     # Center text
-    title_text = "✓ Installation Complete"
+    title_text = "Install Complete"
     title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
     title_width = title_bbox[2] - title_bbox[0]
     title_height = title_bbox[3] - title_bbox[1]
     
-    subtitle_text = "Display is working correctly"
+    subtitle_text = "Display Working"
     subtitle_bbox = draw.textbbox((0, 0), subtitle_text, font=font_subtitle)
     subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
     
