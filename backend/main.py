@@ -169,13 +169,13 @@ class LumyApp:
             image = Image.new('RGB', (self.display_manager.width, self.display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (MASSIVE sizes for 800x480 display - MUST BE READABLE)
+            # Load fonts (LARGE sizes that fit 800x480 display)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 96)
-                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 84)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 56)
-                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 42)
-                logger.info("Fonts loaded successfully - title:96pt, large:84pt, medium:56pt, small:42pt")
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 72)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 64)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 48)
+                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 38)
+                logger.info("Fonts loaded successfully - title:72pt, large:64pt, medium:48pt, small:38pt")
             except Exception as e:
                 logger.error(f"FONT LOADING FAILED: {e} - Using default fonts which are TOO SMALL")
                 font_title = ImageFont.load_default()
@@ -267,11 +267,11 @@ class LumyApp:
             image = Image.new('RGB', (display_manager.width, display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (MASSIVE sizes for 800x480 readability)
+            # Load fonts (LARGE sizes that fit 800x480)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 98)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 60)
-                logger.info("Fonts loaded successfully - title:98pt, medium:60pt")
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 70)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 50)
+                logger.info("Fonts loaded successfully - title:70pt, medium:50pt")
             except Exception as e:
                 logger.error(f"FONT LOADING FAILED: {e} - Using default fonts which are TOO SMALL")
                 font_title = ImageFont.load_default()
@@ -280,13 +280,13 @@ class LumyApp:
             center_x = display_manager.width // 2
             
             # Draw success message
-            title_text = "Registration Successful!"
+            title_text = "Registration Success!"
             title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
             title_width = title_bbox[2] - title_bbox[0]
             draw.text((center_x - title_width // 2, 130), title_text, font=font_title, fill=(0, 150, 0))
             
             # Draw subtitle
-            subtitle_text = "Loading your widgets..."
+            subtitle_text = "Loading widgets..."
             subtitle_bbox = draw.textbbox((0, 0), subtitle_text, font=font_medium)
             subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
             draw.text((center_x - subtitle_width // 2, 250), subtitle_text, font=font_medium, fill=(0, 0, 0))

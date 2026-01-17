@@ -197,13 +197,13 @@ class DeviceRegistration:
             image = Image.new('RGB', (display_manager.width, display_manager.height), color=(255, 255, 255))
             draw = ImageDraw.Draw(image)
             
-            # Load fonts (MASSIVE sizes for 800x480 display - MUST BE READABLE)
+            # Load fonts (LARGE sizes that fit 800x480 display)
             try:
-                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 100)
-                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 80)
-                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 52)
-                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 38)
-                logger.info("Fonts loaded successfully - title:100pt, large:80pt, medium:52pt, small:38pt")
+                font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 76)
+                font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 68)
+                font_medium = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 48)
+                font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 36)
+                logger.info("Fonts loaded successfully - title:76pt, large:68pt, medium:48pt, small:36pt")
             except Exception as e:
                 logger.error(f"FONT LOADING FAILED: {e} - Using default fonts which are TOO SMALL")
                 font_title = ImageFont.load_default()
