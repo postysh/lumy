@@ -254,12 +254,31 @@ address=/captive.apple.com/192.168.4.1
 address=/www.msftconnecttest.com/192.168.4.1
 DNSMASQ
 
-# Unmask and enable services
-echo "  • Enabling services..."
+# Create lumy-ap service (called by wifi_manager.py)
+echo "  • Creating lumy-ap service..."
+sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'APSERVICE'
+[Unit]
+Description=Lumy WiFi Access Point
+After=dhcpcd.service
+Wants=dhcpcd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash -c 'rfkill unblock wifi && sleep 1 && systemctl restart dhcpcd && sleep 2 && systemctl start hostapd && sleep 2 && systemctl start dnsmasq'
+ExecStop=/usr/bin/bash -c 'systemctl stop hostapd; systemctl stop dnsmasq'
+
+[Install]
+WantedBy=multi-user.target
+APSERVICE
+
+# Unmask and disable services (only start when lumy-ap calls them)
+echo "  • Configuring services..."
 sudo systemctl unmask hostapd
 sudo systemctl unmask dnsmasq
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
+sudo systemctl disable hostapd
+sudo systemctl disable dnsmasq
+sudo systemctl daemon-reload
 
 echo "✓ WiFi AP configured"
 echo ""
