@@ -80,6 +80,10 @@ echo ""
 #===========================================
 echo "Step 4/5: Configuring Bluetooth..."
 
+# Unblock Bluetooth (might be blocked by rfkill)
+rfkill unblock bluetooth
+sleep 1
+
 # Enable Bluetooth
 systemctl enable bluetooth
 systemctl start bluetooth
@@ -127,6 +131,7 @@ After=bluetooth.target
 Type=simple
 User=root
 WorkingDirectory=/home/$USER/lumy/backend
+ExecStartPre=/usr/sbin/rfkill unblock bluetooth
 ExecStart=/usr/bin/python3 ble_server.py
 Restart=on-failure
 RestartSec=5
