@@ -68,8 +68,19 @@ echo "Step 4/5: Configuring Bluetooth..."
 systemctl enable bluetooth
 systemctl start bluetooth
 
-# Make Bluetooth discoverable
-hciconfig hci0 piscan
+# Configure Bluetooth to be discoverable and pairable
+# Edit main.conf to allow discovery
+cat >> /etc/bluetooth/main.conf << 'BTCONF'
+
+[General]
+Discoverable = true
+DiscoverableTimeout = 0
+PairableTimeout = 0
+BTCONF
+
+# Restart Bluetooth with new config
+systemctl restart bluetooth
+sleep 2
 
 echo "✓ Bluetooth configured"
 echo ""
