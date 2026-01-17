@@ -266,26 +266,76 @@ address=/captive.apple.com/192.168.4.1
 address=/www.msftconnecttest.com/192.168.4.1
 DNSMASQ
 
+# Create AP startup script with better error handling
+sudo tee /usr/local/bin/lumy-start-ap.sh > /dev/null <<'APSCRIPT'
+#!/bin/bash
+set -e
+
+echo "=== Starting Lumy AP Mode ==="
+
+# Unblock WiFi
+rfkill unblock wifi
+sleep 1
+
+# Restart dhcpcd to apply static IP
+echo "Restarting dhcpcd..."
+systemctl restart dhcpcd
+sleep 3
+
+# Verify wlan0 has static IP
+if ! ip addr show wlan0 | grep -q "192.168.4.1"; then
+    echo "ERROR: wlan0 does not have static IP 192.168.4.1"
+    ip addr show wlan0
+    exit 1
+fi
+
+echo "wlan0 configured with 192.168.4.1"
+
+# Start hostapd
+echo "Starting hostapd..."
+systemctl start hostapd
+sleep 3
+
+# Verify hostapd is running
+if ! systemctl is-active --quiet hostapd; then
+    echo "ERROR: hostapd failed to start"
+    journalctl -u hostapd -n 20 --no-pager
+    exit 1
+fi
+
+echo "hostapd started successfully"
+
+# Start dnsmasq
+echo "Starting dnsmasq..."
+systemctl start dnsmasq
+sleep 2
+
+# Verify dnsmasq is running
+if ! systemctl is-active --quiet dnsmasq; then
+    echo "ERROR: dnsmasq failed to start"
+    journalctl -u dnsmasq -n 20 --no-pager
+    exit 1
+fi
+
+echo "dnsmasq started successfully"
+echo "=== AP Mode Started Successfully ==="
+APSCRIPT
+
+sudo chmod +x /usr/local/bin/lumy-start-ap.sh
+
 # Create lumy-ap service (called by wifi_manager.py)
 echo "  • Creating lumy-ap service..."
 sudo tee /etc/systemd/system/lumy-ap.service > /dev/null <<'APSERVICE'
 [Unit]
 Description=Lumy WiFi Access Point
-After=dhcpcd.service
+After=dhcpcd.service network.target
 Wants=dhcpcd.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=/usr/sbin/rfkill unblock wifi
-ExecStartPre=/bin/sleep 1
-ExecStartPre=/bin/systemctl restart dhcpcd
-ExecStartPre=/bin/sleep 3
-ExecStart=/bin/systemctl start hostapd
-ExecStartPost=/bin/sleep 2
-ExecStartPost=/bin/systemctl start dnsmasq
-ExecStop=/bin/systemctl stop dnsmasq
-ExecStop=/bin/systemctl stop hostapd
+ExecStart=/usr/local/bin/lumy-start-ap.sh
+ExecStop=/bin/bash -c 'systemctl stop dnsmasq; systemctl stop hostapd'
 StandardOutput=journal
 StandardError=journal
 
