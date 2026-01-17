@@ -64,10 +64,29 @@ echo ""
 #===========================================
 echo "Step 4/5: Configuring WiFi AP..."
 
+# CRITICAL: Remove WiFi client configuration (from Imager or previous setup)
+echo "  • Removing existing WiFi client configuration..."
+systemctl stop wpa_supplicant 2>/dev/null || true
+systemctl disable wpa_supplicant 2>/dev/null || true
+rm -f /etc/wpa_supplicant/wpa_supplicant.conf
+rm -f /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+rm -f /boot/firmware/wpa_supplicant.conf
+
+# Stop and disable NetworkManager if present
+systemctl stop NetworkManager 2>/dev/null || true
+systemctl disable NetworkManager 2>/dev/null || true
+
 # Stop services
 systemctl stop hostapd 2>/dev/null || true
 systemctl stop dnsmasq 2>/dev/null || true
 systemctl unmask hostapd
+
+# Disconnect wlan0 from any network
+echo "  • Disconnecting wlan0..."
+ip link set wlan0 down 2>/dev/null || true
+sleep 1
+ip addr flush dev wlan0 2>/dev/null || true
+sleep 1
 
 # Configure hostapd
 cat > /etc/hostapd/hostapd.conf << 'EOF'
@@ -109,6 +128,23 @@ interface wlan0
     nohook wpa_supplicant
 EOF
 
+# Restart dhcpcd to apply config
+echo "  • Restarting dhcpcd..."
+systemctl restart dhcpcd
+sleep 3
+
+# Bring wlan0 up with static IP
+echo "  • Bringing up wlan0..."
+ip link set wlan0 up
+sleep 2
+
+# Verify wlan0 has correct IP
+if ip addr show wlan0 | grep -q "192.168.4.1"; then
+    echo "  ✓ wlan0 configured with 192.168.4.1"
+else
+    echo "  ✗ WARNING: wlan0 may not have static IP"
+fi
+
 echo "✓ WiFi AP configured"
 echo ""
 
@@ -126,7 +162,6 @@ sys.path.append('/usr/local/lib/python3.11/dist-packages')
 
 from waveshare_epd import epd7in3e
 from PIL import Image, ImageDraw, ImageFont
-import time
 
 def main():
     try:
@@ -135,19 +170,51 @@ def main():
         epd.init()
         epd.Clear()
         
-        # Create image
+        # Create white background
         image = Image.new('RGB', (800, 480), 0xFFFFFF)
         draw = ImageDraw.Draw(image)
         
-        # Load font
+        # Load large fonts
         try:
-            font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 60)
+            font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 70)
+            font_ssid = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 80)
+            font_instructions = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 48)
         except:
-            font = ImageFont.load_default()
+            font_title = ImageFont.load_default()
+            font_ssid = ImageFont.load_default()
+            font_instructions = ImageFont.load_default()
         
-        # Draw text
-        draw.text((50, 200), "Connect to WiFi:", font=font, fill=0x000000)
-        draw.text((50, 280), "Lumy-Setup", font=font, fill=0x0000FF)
+        # Calculate center
+        center_x = 400
+        
+        # Title
+        title = "Connect to WiFi:"
+        bbox = draw.textbbox((0, 0), title, font=font_title)
+        title_w = bbox[2] - bbox[0]
+        draw.text((center_x - title_w // 2, 80), title, font=font_title, fill=0x000000)
+        
+        # SSID in box
+        ssid = "Lumy-Setup"
+        bbox = draw.textbbox((0, 0), ssid, font=font_ssid)
+        ssid_w = bbox[2] - bbox[0]
+        ssid_h = bbox[3] - bbox[1]
+        
+        box_y = 200
+        padding = 20
+        draw.rectangle([
+            center_x - ssid_w // 2 - padding,
+            box_y - padding,
+            center_x + ssid_w // 2 + padding,
+            box_y + ssid_h + padding
+        ], outline=0x0000FF, width=5)
+        
+        draw.text((center_x - ssid_w // 2, box_y), ssid, font=font_ssid, fill=0x0000FF)
+        
+        # Instructions
+        inst = "Open browser to configure"
+        bbox = draw.textbbox((0, 0), inst, font=font_instructions)
+        inst_w = bbox[2] - bbox[0]
+        draw.text((center_x - inst_w // 2, 380), inst, font=font_instructions, fill=0x666666)
         
         # Display
         epd.display(epd.getbuffer(image))
@@ -204,6 +271,12 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+
+# Ensure wpa_supplicant stays disabled
+systemctl disable wpa_supplicant 2>/dev/null || true
+systemctl mask wpa_supplicant 2>/dev/null || true
+
+# Enable our services
 systemctl enable lumy.service
 systemctl enable lumy-wifi-setup.service
 systemctl enable hostapd
