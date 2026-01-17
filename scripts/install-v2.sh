@@ -220,10 +220,21 @@ echo "Step 7/8: Setting up WiFi Access Point..."
 sudo systemctl stop hostapd 2>/dev/null || true
 sudo systemctl stop dnsmasq 2>/dev/null || true
 
-# Configure dhcpcd for static IP (CRITICAL - prevents wpa_supplicant interference)
+# Configure dhcpcd to not manage wlan0 (CRITICAL - prevents interference)
 echo "  • Configuring dhcpcd..."
 if ! grep -q "^denyinterfaces wlan0" /etc/dhcpcd.conf; then
     sudo sed -i '1i# Lumy: dhcpcd must not manage wlan0 (used for AP mode)\ndenyinterfaces wlan0\n' /etc/dhcpcd.conf
+fi
+
+# Configure NetworkManager to not manage wlan0 (if NetworkManager is installed)
+echo "  • Configuring NetworkManager..."
+if command -v nmcli &> /dev/null; then
+    sudo mkdir -p /etc/NetworkManager/conf.d
+    sudo tee /etc/NetworkManager/conf.d/99-lumy-unmanaged.conf > /dev/null <<'NMCONF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+NMCONF
+    sudo systemctl reload NetworkManager 2>/dev/null || true
 fi
 
 # Configure hostapd (minimal, proven config)
@@ -238,6 +249,7 @@ wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
+wpa=0
 country_code=US
 HOSTAPD
 
