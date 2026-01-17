@@ -72,20 +72,20 @@ TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
 # Download only necessary files
+mkdir -p waveshare_epd
+cd waveshare_epd
 wget -q https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd/__init__.py
 wget -q https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd/epd7in3e.py
 wget -q https://raw.githubusercontent.com/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd/epdconfig.py
+cd ..
 
-# Create package structure
-mkdir -p waveshare_epd
-mv __init__.py epd7in3e.py epdconfig.py waveshare_epd/
-touch waveshare_epd/setup.py
-cat > waveshare_epd/setup.py << 'SETUP'
+# Create setup.py at the root level
+cat > setup.py << 'SETUP'
 from setuptools import setup, find_packages
 setup(
     name='waveshare-epd',
     version='1.0',
-    packages=find_packages(),
+    packages=['waveshare_epd'],
     install_requires=['Pillow', 'RPi.GPIO', 'spidev']
 )
 SETUP
@@ -93,7 +93,7 @@ SETUP
 # Install into venv
 cd "$LUMY_DIR/backend"
 source venv/bin/activate
-pip install "$TEMP_DIR/waveshare_epd"
+pip install "$TEMP_DIR"
 
 # Cleanup
 rm -rf "$TEMP_DIR"
