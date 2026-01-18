@@ -57,47 +57,61 @@ def main():
         device_id = device_mgr.get_device_id()
         logger.info(f"Device ID: {device_id}")
         
-        # Generate registration code
-        reg_code = generate_registration_code()
-        logger.info(f"Registration code: {reg_code}")
+        # Check if device is already registered
+        logger.info("Checking if device is already registered...")
+        status = api_client.check_claim_status(device_id)
         
-        # Register with API
-        logger.info("Registering with dashboard...")
-        registration = api_client.register_device(device_id, reg_code)
-        
-        if not registration:
-            logger.error("Failed to register with dashboard. Check API URL and API key.")
-            logger.error(f"API URL: {config.API_BASE_URL}")
-            logger.warning("Displaying code anyway, but claiming won't work without API connection.")
+        if status and status.get('registered'):
+            # Device is already claimed, skip registration
+            logger.info("Device is already registered!")
+            logger.info(f"  User ID: {status.get('user_id')}")
+            logger.info(f"  Device name: {status.get('device_name')}")
+            logger.info("Skipping registration flow, going straight to widgets...")
         else:
-            logger.info("Successfully registered with dashboard")
-        
-        # Show welcome screen
-        display.show_welcome_screen(reg_code)
-        logger.info("Welcome screen displayed")
-        
-        # Poll for claim status
-        logger.info("Waiting for user to claim device...")
-        claimed = False
-        poll_count = 0
-        
-        while not claimed:
-            time.sleep(config.POLL_INTERVAL)
-            poll_count += 1
+            # Device not claimed yet, do registration flow
+            logger.info("Device not registered, starting registration flow...")
             
-            # Check if claimed
-            status = api_client.check_claim_status(device_id)
+            # Generate registration code
+            reg_code = generate_registration_code()
+            logger.info(f"Registration code: {reg_code}")
             
-            if status and status.get('registered'):
-                logger.info("Device has been claimed!")
-                logger.info(f"  User ID: {status.get('user_id')}")
-                logger.info(f"  Device name: {status.get('device_name')}")
-                claimed = True
-                break
+            # Register with API
+            logger.info("Registering with dashboard...")
+            registration = api_client.register_device(device_id, reg_code)
             
-            # Log status every minute
-            if poll_count % 6 == 0:  # Every 60 seconds
-                logger.info(f"Still waiting for claim... ({poll_count * config.POLL_INTERVAL}s)")
+            if not registration:
+                logger.error("Failed to register with dashboard. Check API URL and API key.")
+                logger.error(f"API URL: {config.API_BASE_URL}")
+                logger.warning("Displaying code anyway, but claiming won't work without API connection.")
+            else:
+                logger.info("Successfully registered with dashboard")
+            
+            # Show welcome screen
+            display.show_welcome_screen(reg_code)
+            logger.info("Welcome screen displayed")
+            
+            # Poll for claim status
+            logger.info("Waiting for user to claim device...")
+            claimed = False
+            poll_count = 0
+            
+            while not claimed:
+                time.sleep(config.POLL_INTERVAL)
+                poll_count += 1
+                
+                # Check if claimed
+                status = api_client.check_claim_status(device_id)
+                
+                if status and status.get('registered'):
+                    logger.info("Device has been claimed!")
+                    logger.info(f"  User ID: {status.get('user_id')}")
+                    logger.info(f"  Device name: {status.get('device_name')}")
+                    claimed = True
+                    break
+                
+                # Log status every minute
+                if poll_count % 6 == 0:  # Every 60 seconds
+                    logger.info(f"Still waiting for claim... ({poll_count * config.POLL_INTERVAL}s)")
         
         # Device is claimed, fetch configuration
         logger.info("Fetching configuration...")
