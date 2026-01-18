@@ -25,12 +25,12 @@ class WeatherWidget:
             params = {
                 'latitude': self.lat,
                 'longitude': self.lon,
-                'current': 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
-                'daily': 'weather_code,temperature_2m_max,temperature_2m_min',
+                'current': 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation',
+                'daily': 'weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,precipitation_probability_max',
                 'temperature_unit': 'fahrenheit',
                 'wind_speed_unit': 'mph',
                 'timezone': 'America/Chicago',
-                'forecast_days': 5
+                'forecast_days': 6  # Get 6 days (today + 5 more)
             }
             
             response = requests.get(self.api_url, params=params, timeout=10)
@@ -45,18 +45,31 @@ class WeatherWidget:
                     'humidity': current.get('relative_humidity_2m', 0),
                     'wind_speed': round(current.get('wind_speed_10m', 0)),
                     'weather_code': current.get('weather_code', 0),
+                    'precipitation': current.get('precipitation', 0),
                     'time': current.get('time', ''),
+                    'uv_index': 0,
+                    'precipitation_chance': 0,
                     'forecast': []
                 }
                 
-                # Parse 5-day forecast
+                # Get today's UV and precipitation
+                if daily:
+                    uv_indices = daily.get('uv_index_max', [])
+                    precip_probs = daily.get('precipitation_probability_max', [])
+                    
+                    if len(uv_indices) > 0:
+                        weather_info['uv_index'] = round(uv_indices[0])
+                    if len(precip_probs) > 0:
+                        weather_info['precipitation_chance'] = precip_probs[0]
+                
+                # Parse 5-day forecast (skip today, get next 5 days)
                 if daily:
                     times = daily.get('time', [])
                     codes = daily.get('weather_code', [])
                     max_temps = daily.get('temperature_2m_max', [])
                     min_temps = daily.get('temperature_2m_min', [])
                     
-                    for i in range(min(5, len(times))):
+                    for i in range(1, min(6, len(times))):  # Start from index 1 (tomorrow)
                         weather_info['forecast'].append({
                             'date': times[i],
                             'weather_code': codes[i] if i < len(codes) else 0,
@@ -125,9 +138,39 @@ class WeatherWidget:
         except:
             return ""
     
+    def get_later_forecast(self, weather_code):
+        """Get a simple forecast description for later in the day"""
+        desc = self.get_weather_description(weather_code)
+        phrases = [
+            "Expect similar conditions",
+            "Conditions will persist",
+            "Staying consistent",
+            "No major changes expected"
+        ]
+        
+        if 'rain' in desc.lower() or 'drizzle' in desc.lower():
+            return "Rain likely later"
+        elif 'snow' in desc.lower():
+            return "Snow expected"
+        elif 'thunder' in desc.lower():
+            return "Storms possible"
+        elif 'clear' in desc.lower():
+            return "Clear skies ahead"
+        elif 'cloud' in desc.lower():
+            return "Clouds continuing"
+        else:
+            return phrases[0]
+    
+    def draw_dotted_line(self, draw, x, y1, y2, color=(180, 180, 180), spacing=5):
+        """Draw a vertical dotted line"""
+        y = y1
+        while y < y2:
+            draw.line([(x, y), (x, min(y + spacing, y2))], fill=color, width=2)
+            y += spacing * 2
+    
     def render(self, weather_data=None):
         """
-        Render weather widget to image with new layout
+        Render weather widget with 3-column layout
         
         Args:
             weather_data: Optional pre-fetched weather data
@@ -139,136 +182,144 @@ class WeatherWidget:
             weather_data = self.fetch_weather()
         
         if not weather_data:
-            # Return error screen
             return self._render_error()
         
-        # Create canvas with light blue background
-        image = Image.new('RGB', (self.width, self.height), (240, 248, 255))  # Alice blue
+        # Create canvas
+        image = Image.new('RGB', (self.width, self.height), 'white')
         draw = ImageDraw.Draw(image)
         
         # Load fonts
         try:
-            city_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
-            current_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 72)
-            header_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 36)
-            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+            condition_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 42)
+            later_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 100)
+            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
             value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
-            day_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 24)
-            forecast_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
+            day_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 20)
+            forecast_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18)
+            footer_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
         except Exception as e:
             logger.warning(f"Could not load fonts: {e}")
-            city_font = ImageFont.load_default()
-            current_temp_font = ImageFont.load_default()
-            header_font = ImageFont.load_default()
+            # Fallback
+            condition_font = ImageFont.load_default()
+            later_font = ImageFont.load_default()
+            temp_font = ImageFont.load_default()
             label_font = ImageFont.load_default()
             value_font = ImageFont.load_default()
             day_font = ImageFont.load_default()
             forecast_temp_font = ImageFont.load_default()
+            footer_font = ImageFont.load_default()
         
-        # TOP LEFT: City name and current temperature
-        left_margin = 30
-        top_margin = 30
+        # Define column widths (3 columns)
+        col1_width = 267  # Left section
+        col2_width = 266  # Center section
+        col3_width = 267  # Right section
+        col1_x = 0
+        col2_x = col1_width
+        col3_x = col1_width + col2_width
         
-        city_text = "St. Paul"
-        draw.text((left_margin, top_margin), city_text, font=city_font, fill=(40, 40, 40))
+        footer_y = self.height - 35
+        content_height = footer_y - 20
         
+        # Draw dotted vertical dividers
+        self.draw_dotted_line(draw, col2_x, 0, footer_y)
+        self.draw_dotted_line(draw, col3_x, 0, footer_y)
+        
+        # ============ LEFT SECTION ============
+        left_margin = 20
+        
+        # Current condition at top
+        desc_text = self.get_weather_description(weather_data['weather_code'])
+        desc_icon = self.get_weather_icon(weather_data['weather_code'])
+        
+        # Wrap text if too long
+        condition_y = 30
+        draw.text((left_margin, condition_y), desc_icon, font=condition_font, fill='black')
+        draw.text((left_margin, condition_y + 50), desc_text, font=condition_font, fill=(40, 40, 40))
+        
+        # "Later" forecast at bottom of left section
+        later_y = content_height - 100
+        draw.text((left_margin, later_y), "Later:", font=label_font, fill=(100, 100, 100))
+        later_forecast = self.get_later_forecast(weather_data['weather_code'])
+        draw.text((left_margin, later_y + 35), later_forecast, font=later_font, fill=(60, 60, 60))
+        
+        # ============ CENTER SECTION ============
+        center_x = col2_x + (col2_width // 2)
+        
+        # Large temperature at top (centered)
         temp = weather_data['temperature']
         temp_color = self.get_temp_color(temp)
-        temp_text = f"{temp}°F"
-        draw.text((left_margin, top_margin + 60), temp_text, font=current_temp_font, fill=temp_color)
+        temp_text = f"{temp}°"
+        temp_bbox = draw.textbbox((0, 0), temp_text, font=temp_font)
+        temp_width = temp_bbox[2] - temp_bbox[0]
+        temp_x = center_x - (temp_width // 2)
+        draw.text((temp_x, 20), temp_text, font=temp_font, fill=temp_color)
         
-        # Weather description with icon
-        desc_icon = self.get_weather_icon(weather_data['weather_code'])
-        desc_text = self.get_weather_description(weather_data['weather_code'])
-        full_desc = f"{desc_icon} {desc_text}"
-        draw.text((left_margin, top_margin + 145), full_desc, font=label_font, fill=(60, 60, 60))
+        # UV and Precipitation at bottom of center
+        uv_precip_y = content_height - 120
         
-        # TOP RIGHT: "Current Weather" header and info cards
-        right_section_x = 420
+        # UV Index
+        uv_text = "UV Index"
+        uv_value = f"{weather_data['uv_index']}"
+        uv_bbox = draw.textbbox((0, 0), uv_text, font=label_font)
+        uv_text_width = uv_bbox[2] - uv_bbox[0]
+        uv_x = center_x - (uv_text_width // 2)
+        draw.text((uv_x, uv_precip_y), uv_text, font=label_font, fill=(100, 100, 100))
         
-        header_text = "Current Weather"
-        draw.text((right_section_x, top_margin), header_text, font=header_font, fill=(40, 40, 40))
+        uv_value_bbox = draw.textbbox((0, 0), uv_value, font=value_font)
+        uv_value_width = uv_value_bbox[2] - uv_value_bbox[0]
+        uv_value_x = center_x - (uv_value_width // 2)
+        draw.text((uv_value_x, uv_precip_y + 30), uv_value, font=value_font, fill=(255, 140, 0))
         
-        # Humidity card
-        card_y = top_margin + 60
-        card_width = 160
-        card_height = 50
+        # Precipitation
+        precip_text = "Precipitation"
+        precip_value = f"{weather_data['precipitation_chance']}%"
+        precip_bbox = draw.textbbox((0, 0), precip_text, font=label_font)
+        precip_text_width = precip_bbox[2] - precip_bbox[0]
+        precip_x = center_x - (precip_text_width // 2)
+        draw.text((precip_x, uv_precip_y + 75), precip_text, font=label_font, fill=(100, 100, 100))
         
-        draw.rectangle(
-            [right_section_x, card_y, right_section_x + card_width, card_y + card_height],
-            fill=(173, 216, 230),
-            outline=(70, 130, 180),
-            width=2
-        )
-        humidity_text = f"💧 {weather_data['humidity']}%"
-        draw.text((right_section_x + 10, card_y + 12), humidity_text, font=value_font, fill=(25, 25, 112))
+        precip_value_bbox = draw.textbbox((0, 0), precip_value, font=value_font)
+        precip_value_width = precip_value_bbox[2] - precip_value_bbox[0]
+        precip_value_x = center_x - (precip_value_width // 2)
+        draw.text((precip_value_x, uv_precip_y + 105), precip_value, font=value_font, fill=(70, 130, 180))
         
-        # Wind card
-        wind_card_x = right_section_x + card_width + 20
-        draw.rectangle(
-            [wind_card_x, card_y, wind_card_x + card_width, card_y + card_height],
-            fill=(144, 238, 144),
-            outline=(34, 139, 34),
-            width=2
-        )
-        wind_text = f"💨 {weather_data['wind_speed']} mph"
-        draw.text((wind_card_x + 10, card_y + 12), wind_text, font=value_font, fill=(0, 100, 0))
-        
-        # BOTTOM: 5-day forecast
-        forecast_y = 240
-        
-        # Draw separator line
-        draw.line([(20, forecast_y - 20), (self.width - 20, forecast_y - 20)], fill=(180, 180, 180), width=2)
-        
-        # Forecast title
-        forecast_title = "5-Day Forecast"
-        draw.text((30, forecast_y), forecast_title, font=header_font, fill=(40, 40, 40))
-        
-        # Draw forecast cards
-        forecast_start_y = forecast_y + 55
-        card_height = 160
-        card_spacing = 10
-        total_spacing = card_spacing * 4
-        card_width = (self.width - 60 - total_spacing) // 5
+        # ============ RIGHT SECTION (5-DAY FORECAST STACKED) ============
+        right_margin = col3_x + 15
+        forecast_start_y = 20
+        forecast_item_height = 73
         
         for i, day_data in enumerate(weather_data.get('forecast', [])[:5]):
-            card_x = 30 + i * (card_width + card_spacing)
-            
-            # Card background
-            draw.rectangle(
-                [card_x, forecast_start_y, card_x + card_width, forecast_start_y + card_height],
-                fill='white',
-                outline=(180, 180, 180),
-                width=2
-            )
+            item_y = forecast_start_y + (i * forecast_item_height)
             
             # Day name
             day_name = self.get_day_name(day_data['date'])
-            day_bbox = draw.textbbox((0, 0), day_name, font=day_font)
-            day_width = day_bbox[2] - day_bbox[0]
-            day_x = card_x + (card_width - day_width) // 2
-            draw.text((day_x, forecast_start_y + 10), day_name, font=day_font, fill=(40, 40, 40))
+            draw.text((right_margin, item_y), day_name, font=day_font, fill=(40, 40, 40))
             
             # Weather icon
             icon = self.get_weather_icon(day_data['weather_code'])
-            icon_bbox = draw.textbbox((0, 0), icon, font=header_font)
-            icon_width = icon_bbox[2] - icon_bbox[0]
-            icon_x = card_x + (card_width - icon_width) // 2
-            draw.text((icon_x, forecast_start_y + 45), icon, font=header_font, fill='black')
+            draw.text((right_margin + 45, item_y - 5), icon, font=condition_font, fill='black')
             
-            # High temp
+            # High/Low temps
             high_temp = f"{day_data['temp_max']}°"
-            high_bbox = draw.textbbox((0, 0), high_temp, font=forecast_temp_font)
-            high_width = high_bbox[2] - high_bbox[0]
-            high_x = card_x + (card_width - high_width) // 2
-            draw.text((high_x, forecast_start_y + 100), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
-            
-            # Low temp
             low_temp = f"{day_data['temp_min']}°"
-            low_bbox = draw.textbbox((0, 0), low_temp, font=forecast_temp_font)
-            low_width = low_bbox[2] - low_bbox[0]
-            low_x = card_x + (card_width - low_width) // 2
-            draw.text((low_x, forecast_start_y + 125), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
+            draw.text((right_margin + 100, item_y + 3), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
+            draw.text((right_margin + 155, item_y + 3), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
+            
+            # Separator line (except last item)
+            if i < 4:
+                sep_y = item_y + forecast_item_height - 5
+                draw.line([(right_margin, sep_y), (col3_x + col3_width - 15, sep_y)], fill=(220, 220, 220), width=1)
+        
+        # ============ FOOTER ============
+        # Bottom left: "Weather"
+        draw.text((20, footer_y), "Weather", font=footer_font, fill=(100, 100, 100))
+        
+        # Bottom right: City name
+        city_text = "St. Paul, MN"
+        city_bbox = draw.textbbox((0, 0), city_text, font=footer_font)
+        city_width = city_bbox[2] - city_bbox[0]
+        draw.text((self.width - city_width - 20, footer_y), city_text, font=footer_font, fill=(100, 100, 100))
         
         return image
     
