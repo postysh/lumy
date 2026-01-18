@@ -44,7 +44,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
     <Link href={`/dashboard/devices/${device.device_id}`}>
       <div className="group relative overflow-hidden rounded-lg border bg-card p-6 hover:shadow-lg transition-all hover:border-primary cursor-pointer">
         {/* Status indicator */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 z-10">
           {isOnline ? (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse" />
@@ -58,79 +58,84 @@ export function DeviceCard({ device }: DeviceCardProps) {
           )}
         </div>
 
-        {/* Device icon */}
-        <div className="mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-            <Monitor className="h-6 w-6 text-primary" />
+        {/* Two-column layout: Preview on left, Info on right */}
+        <div className="flex gap-4">
+          {/* Left column: Display preview or icon */}
+          <div className="flex-shrink-0">
+            {device.display_preview ? (
+              <div className="w-48 h-28 rounded-lg overflow-hidden border bg-muted">
+                <img 
+                  src={device.display_preview} 
+                  alt="Current display" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-48 h-28 flex items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <Monitor className="h-8 w-8 text-primary" />
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Device info */}
-        <div className="space-y-2 mb-4">
-          <h3 className="font-semibold text-lg">{device.device_name}</h3>
-          <p className="text-xs text-muted-foreground font-mono">
-            {device.device_id}
-          </p>
-        </div>
-
-        {/* Display preview */}
-        {device.display_preview && (
-          <div className="mb-4 rounded-lg overflow-hidden border bg-muted">
-            <img 
-              src={device.display_preview} 
-              alt="Current display" 
-              className="w-full h-auto"
-            />
-          </div>
-        )}
-
-        {/* Device details grid */}
-        <div className="space-y-2 text-xs">
-          {/* Last seen */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Activity className="h-3 w-3" />
-              <span>Last seen</span>
+          {/* Right column: Device info */}
+          <div className="flex-1 min-w-0">
+            {/* Device name and ID */}
+            <div className="space-y-0.5 mb-2">
+              <h3 className="font-semibold text-sm truncate">{device.device_name}</h3>
+              <p className="text-[10px] text-muted-foreground font-mono truncate">
+                {device.device_id}
+              </p>
             </div>
-            <span className="font-medium">{getUptimeText()}</span>
-          </div>
 
-          {/* Registered date */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              <span>Registered</span>
+            {/* Device details grid */}
+            <div className="space-y-1 text-[11px]">
+              {/* Last seen */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Activity className="h-2.5 w-2.5 flex-shrink-0" />
+                  <span>Last seen</span>
+                </div>
+                <span className="font-medium">{getUptimeText()}</span>
+              </div>
+
+              {/* Registered date */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Calendar className="h-2.5 w-2.5 flex-shrink-0" />
+                  <span>Registered</span>
+                </div>
+                <span className="font-medium">{formatDate(registeredAt)}</span>
+              </div>
+
+              {/* System stats (if available) */}
+              {device.current_status?.system && (
+                <>
+                  {device.current_status.system.cpu_temp && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Thermometer className="h-2.5 w-2.5 flex-shrink-0" />
+                        <span>Temperature</span>
+                      </div>
+                      <span className="font-medium">
+                        {device.current_status.system.cpu_temp.toFixed(1)}°C
+                      </span>
+                    </div>
+                  )}
+                  {device.current_status.system.memory_usage && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Cpu className="h-2.5 w-2.5 flex-shrink-0" />
+                        <span>Memory</span>
+                      </div>
+                      <span className="font-medium">
+                        {device.current_status.system.memory_usage.toFixed(0)}%
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            <span className="font-medium">{formatDate(registeredAt)}</span>
           </div>
-
-          {/* System stats (if available) */}
-          {device.current_status?.system && (
-            <>
-              {device.current_status.system.cpu_temp && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Thermometer className="h-3 w-3" />
-                    <span>Temperature</span>
-                  </div>
-                  <span className="font-medium">
-                    {device.current_status.system.cpu_temp.toFixed(1)}°C
-                  </span>
-                </div>
-              )}
-              {device.current_status.system.memory_usage && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Cpu className="h-3 w-3" />
-                    <span>Memory</span>
-                  </div>
-                  <span className="font-medium">
-                    {device.current_status.system.memory_usage.toFixed(0)}%
-                  </span>
-                </div>
-              )}
-            </>
-          )}
         </div>
       </div>
     </Link>

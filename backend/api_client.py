@@ -111,13 +111,14 @@ class LumyAPIClient:
             logger.error(f"Error fetching config: {e}")
             return None
     
-    def send_heartbeat(self, device_id: str, display_preview: Optional[str] = None) -> bool:
+    def send_heartbeat(self, device_id: str, display_preview: Optional[str] = None, system_info: Optional[Dict[str, Any]] = None) -> bool:
         """
-        Send heartbeat to update last_seen timestamp and display preview
+        Send heartbeat to update last_seen timestamp, display preview, and system info
         
         Args:
             device_id: Unique device identifier
             display_preview: Base64 encoded display preview image (optional)
+            system_info: Dictionary with system information (optional)
             
         Returns:
             True if successful, False otherwise
@@ -127,7 +128,7 @@ class LumyAPIClient:
                 'status': 'online',
                 'last_refresh': None,
                 'widgets': {},
-                'system': {}
+                'system': system_info or {}
             }
             
             # Add display preview if provided

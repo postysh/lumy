@@ -9,6 +9,8 @@ import time
 import logging
 import random
 import base64
+import subprocess
+import socket
 from io import BytesIO
 from display_manager import DisplayManager
 from device_manager import DeviceManager
@@ -21,6 +23,104 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def get_system_info():
+    """
+    Collect system information from the Raspberry Pi
+    
+    Returns:
+        Dictionary with system information
+    """
+    info = {}
+    
+    try:
+        # Get MAC address
+        try:
+            mac_result = subprocess.run(['cat', '/sys/class/net/wlan0/address'], 
+                                       capture_output=True, text=True, timeout=2)
+            if mac_result.returncode == 0:
+                info['mac_address'] = mac_result.stdout.strip().upper()
+        except:
+            info['mac_address'] = 'Unknown'
+        
+        # Get WiFi signal strength
+        try:
+            wifi_result = subprocess.run(['iwconfig', 'wlan0'], 
+                                        capture_output=True, text=True, timeout=2)
+            if wifi_result.returncode == 0:
+                # Parse signal level from iwconfig output
+                for line in wifi_result.stdout.split('\n'):
+                    if 'Signal level' in line:
+                        # Extract signal level (e.g., "-50 dBm")
+                        parts = line.split('Signal level=')
+                        if len(parts) > 1:
+                            signal = parts[1].split()[0]
+                            info['wifi_signal'] = signal
+                            break
+                if 'wifi_signal' not in info:
+                    info['wifi_signal'] = 'Unknown'
+        except:
+            info['wifi_signal'] = 'Unknown'
+        
+        # Get firmware/OS version
+        try:
+            with open('/etc/os-release', 'r') as f:
+                for line in f:
+                    if line.startswith('PRETTY_NAME='):
+                        info['firmware'] = line.split('=')[1].strip().strip('"')
+                        break
+            if 'firmware' not in info:
+                info['firmware'] = 'Raspberry Pi OS'
+        except:
+            info['firmware'] = 'Unknown'
+        
+        # Get timezone
+        try:
+            tz_result = subprocess.run(['timedatectl', 'show', '--property=Timezone', '--value'], 
+                                      capture_output=True, text=True, timeout=2)
+            if tz_result.returncode == 0:
+                tz = tz_result.stdout.strip()
+                info['timezone'] = tz if tz else 'UTC'
+            else:
+                info['timezone'] = 'UTC'
+        except:
+            info['timezone'] = 'UTC'
+        
+        # Get uptime
+        try:
+            with open('/proc/uptime', 'r') as f:
+                uptime_seconds = float(f.read().split()[0])
+                info['uptime'] = int(uptime_seconds)
+        except:
+            info['uptime'] = 0
+        
+        # Get CPU temperature
+        try:
+            with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                temp = float(f.read()) / 1000.0
+                info['cpu_temp'] = round(temp, 1)
+        except:
+            info['cpu_temp'] = None
+        
+        # Get memory usage
+        try:
+            mem_result = subprocess.run(['free'], capture_output=True, text=True, timeout=2)
+            if mem_result.returncode == 0:
+                lines = mem_result.stdout.split('\n')
+                if len(lines) > 1:
+                    mem_line = lines[1].split()
+                    total = int(mem_line[1])
+                    used = int(mem_line[2])
+                    info['memory_usage'] = round((used / total) * 100, 1)
+        except:
+            info['memory_usage'] = None
+        
+        logger.info(f"System info collected: WiFi={info.get('wifi_signal')}, Temp={info.get('cpu_temp')}°C")
+        
+    except Exception as e:
+        logger.error(f"Error collecting system info: {e}")
+    
+    return info
 
 def image_to_base64_preview(image, max_width=400):
     """
@@ -184,12 +284,17 @@ def main():
         while True:
             now = time.time()
             
-            # Send heartbeat every 60 seconds with display preview
+            # Send heartbeat every 60 seconds with display preview and system info
             if now - last_heartbeat >= 60:
                 display_preview = None
                 if current_display_image:
                     display_preview = image_to_base64_preview(current_display_image)
-                api_client.send_heartbeat(device_id, display_preview)
+                
+                # Collect system information
+                system_info = get_system_info()
+                
+                # Send heartbeat with all data
+                api_client.send_heartbeat(device_id, display_preview, system_info)
                 last_heartbeat = now
             
             # Refresh weather every 10 minutes
