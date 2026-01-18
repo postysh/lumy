@@ -3,7 +3,6 @@
 import * as React from "react"
 import {
   Monitor,
-  Grid3x3,
   Settings2,
   Activity,
   Zap,
@@ -33,35 +32,6 @@ const data = {
       url: "/dashboard",
       icon: Monitor,
       isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard",
-        },
-        {
-          title: "System Status",
-          url: "/dashboard#status",
-        },
-      ],
-    },
-    {
-      title: "Widgets",
-      url: "/dashboard/widgets",
-      icon: Grid3x3,
-      items: [
-        {
-          title: "Clock",
-          url: "/dashboard/widgets#clock",
-        },
-        {
-          title: "Weather",
-          url: "/dashboard/widgets#weather",
-        },
-        {
-          title: "Calendar",
-          url: "/dashboard/widgets#calendar",
-        },
-      ],
     },
     {
       title: "Settings",

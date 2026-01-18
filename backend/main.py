@@ -8,6 +8,8 @@ import sys
 import time
 import logging
 import random
+import base64
+from io import BytesIO
 from display_manager import DisplayManager
 from device_manager import DeviceManager
 from api_client import LumyAPIClient
@@ -19,6 +21,40 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def image_to_base64_preview(image, max_width=400):
+    """
+    Convert PIL image to base64 encoded thumbnail for preview
+    
+    Args:
+        image: PIL Image object
+        max_width: Maximum width of thumbnail (maintains aspect ratio)
+        
+    Returns:
+        Base64 encoded image string or None if error
+    """
+    try:
+        from PIL import Image
+        
+        # Calculate thumbnail size (maintain aspect ratio)
+        aspect_ratio = image.height / image.width
+        thumbnail_width = min(max_width, image.width)
+        thumbnail_height = int(thumbnail_width * aspect_ratio)
+        
+        # Create thumbnail
+        thumbnail = image.copy()
+        thumbnail.thumbnail((thumbnail_width, thumbnail_height), Image.Resampling.LANCZOS)
+        
+        # Convert to base64
+        buffer = BytesIO()
+        thumbnail.save(buffer, format='PNG', optimize=True)
+        buffer.seek(0)
+        
+        img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/png;base64,{img_str}"
+    except Exception as e:
+        logger.error(f"Failed to create image preview: {e}")
+        return None
 
 def generate_registration_code():
     """
@@ -130,8 +166,11 @@ def main():
         # Display weather widget
         logger.info("Rendering weather widget...")
         weather_image = weather.render()
+        current_display_image = None
+        
         if weather_image:
             display.epd.display(display.epd.getbuffer(weather_image))
+            current_display_image = weather_image
             logger.info("Weather widget displayed")
         else:
             logger.error("Failed to render weather widget")
@@ -145,9 +184,12 @@ def main():
         while True:
             now = time.time()
             
-            # Send heartbeat every 60 seconds
+            # Send heartbeat every 60 seconds with display preview
             if now - last_heartbeat >= 60:
-                api_client.send_heartbeat(device_id)
+                display_preview = None
+                if current_display_image:
+                    display_preview = image_to_base64_preview(current_display_image)
+                api_client.send_heartbeat(device_id, display_preview)
                 last_heartbeat = now
             
             # Refresh weather every 10 minutes
@@ -156,6 +198,7 @@ def main():
                 weather_image = weather.render()
                 if weather_image:
                     display.epd.display(display.epd.getbuffer(weather_image))
+                    current_display_image = weather_image
                     logger.info("Weather updated")
                 last_weather_refresh = now
             

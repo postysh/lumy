@@ -1,4 +1,4 @@
-import { Monitor, Wifi, WifiOff, Clock } from 'lucide-react'
+import { Monitor, Clock, Calendar, Activity, Thermometer, Cpu } from 'lucide-react'
 import Link from 'next/link'
 
 interface DeviceCardProps {
@@ -8,6 +8,8 @@ interface DeviceCardProps {
     device_name: string
     is_online: boolean
     last_seen: string
+    registered_at: string
+    display_preview?: string
     current_status?: any
   }
 }
@@ -15,9 +17,28 @@ interface DeviceCardProps {
 export function DeviceCard({ device }: DeviceCardProps) {
   const isOnline = device.is_online && device.last_seen
   const lastSeen = device.last_seen ? new Date(device.last_seen) : null
+  const registeredAt = device.registered_at ? new Date(device.registered_at) : null
+  
   const timeSinceLastSeen = lastSeen
     ? Math.floor((Date.now() - lastSeen.getTime()) / 1000 / 60)
     : null
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'N/A'
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  }
+
+  const getUptimeText = () => {
+    if (!timeSinceLastSeen) return 'N/A'
+    if (timeSinceLastSeen < 1) return 'Just now'
+    if (timeSinceLastSeen < 60) return `${timeSinceLastSeen}m ago`
+    if (timeSinceLastSeen < 1440) return `${Math.floor(timeSinceLastSeen / 60)}h ago`
+    return `${Math.floor(timeSinceLastSeen / 1440)}d ago`
+  }
 
   return (
     <Link href={`/dashboard/devices/${device.device_id}`}>
@@ -27,7 +48,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
           {isOnline ? (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse" />
-              <span className="text-xs">Online</span>
+              <span className="text-xs font-medium">Online</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -45,46 +66,72 @@ export function DeviceCard({ device }: DeviceCardProps) {
         </div>
 
         {/* Device info */}
-        <div className="space-y-2">
+        <div className="space-y-2 mb-4">
           <h3 className="font-semibold text-lg">{device.device_name}</h3>
-          <p className="text-sm text-muted-foreground font-mono">
+          <p className="text-xs text-muted-foreground font-mono">
             {device.device_id}
           </p>
-          
-          {/* Last seen */}
-          {timeSinceLastSeen !== null && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-              <Clock className="h-3 w-3" />
-              {timeSinceLastSeen < 1
-                ? 'Just now'
-                : timeSinceLastSeen < 60
-                ? `${timeSinceLastSeen}m ago`
-                : `${Math.floor(timeSinceLastSeen / 60)}h ago`}
-            </div>
-          )}
         </div>
 
-        {/* System stats (if available) */}
-        {device.current_status?.system && (
-          <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-2 text-xs">
-            {device.current_status.system.cpu_temp && (
-              <div>
-                <span className="text-muted-foreground">CPU:</span>
-                <span className="ml-1 font-medium">
-                  {device.current_status.system.cpu_temp.toFixed(1)}°C
-                </span>
-              </div>
-            )}
-            {device.current_status.system.memory_usage && (
-              <div>
-                <span className="text-muted-foreground">RAM:</span>
-                <span className="ml-1 font-medium">
-                  {device.current_status.system.memory_usage.toFixed(0)}%
-                </span>
-              </div>
-            )}
+        {/* Display preview */}
+        {device.display_preview && (
+          <div className="mb-4 rounded-lg overflow-hidden border bg-muted">
+            <img 
+              src={device.display_preview} 
+              alt="Current display" 
+              className="w-full h-auto"
+            />
           </div>
         )}
+
+        {/* Device details grid */}
+        <div className="space-y-2 text-xs">
+          {/* Last seen */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Activity className="h-3 w-3" />
+              <span>Last seen</span>
+            </div>
+            <span className="font-medium">{getUptimeText()}</span>
+          </div>
+
+          {/* Registered date */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              <span>Registered</span>
+            </div>
+            <span className="font-medium">{formatDate(registeredAt)}</span>
+          </div>
+
+          {/* System stats (if available) */}
+          {device.current_status?.system && (
+            <>
+              {device.current_status.system.cpu_temp && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Thermometer className="h-3 w-3" />
+                    <span>Temperature</span>
+                  </div>
+                  <span className="font-medium">
+                    {device.current_status.system.cpu_temp.toFixed(1)}°C
+                  </span>
+                </div>
+              )}
+              {device.current_status.system.memory_usage && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Cpu className="h-3 w-3" />
+                    <span>Memory</span>
+                  </div>
+                  <span className="font-medium">
+                    {device.current_status.system.memory_usage.toFixed(0)}%
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Link>
   )

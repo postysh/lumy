@@ -73,6 +73,31 @@ export async function POST(
       console.log(`Device ${deviceId} status updated:`, body);
     }
     
+    // If display preview is provided, update the device record
+    if (body.display_preview) {
+      const { error: deviceError } = await supabase
+        .from('devices')
+        .update({ 
+          display_preview: body.display_preview,
+          last_seen: new Date().toISOString(),
+          is_online: true
+        })
+        .eq('device_id', deviceId);
+      
+      if (deviceError) {
+        console.error('Failed to update device preview:', deviceError);
+      }
+    } else {
+      // Just update last_seen and is_online
+      await supabase
+        .from('devices')
+        .update({ 
+          last_seen: new Date().toISOString(),
+          is_online: true
+        })
+        .eq('device_id', deviceId);
+    }
+    
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Error updating status:', err);
