@@ -310,14 +310,16 @@ class WeatherWidget:
         right_margin = col3_x + 15
         
         # Calculate vertical centering for 5-day forecast
-        # Use content_height (which excludes footer) for proper centering
         forecast_item_height = 68
         separator_height = 8  # Space for separator lines
         total_item_height = forecast_item_height + separator_height
         total_forecast_height = (total_item_height * 4) + forecast_item_height  # 4 items with separators + 1 last item
         
-        # Center in the content area (above footer)
-        available_height = content_height
+        # Calculate actual available space from top to footer border
+        footer_border_y = footer_y - 8
+        available_height = footer_border_y  # From y=0 to footer border
+        
+        # Center the forecast in the available space with equal padding top and bottom
         forecast_start_y = (available_height - total_forecast_height) // 2
         
         for i, day_data in enumerate(weather_data.get('forecast', [])[:5]):
