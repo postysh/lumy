@@ -309,48 +309,33 @@ class WeatherWidget:
         # ============ RIGHT SECTION (5-DAY FORECAST STACKED) ============
         right_margin = col3_x + 15
         
-        # Calculate vertical centering for 5-day forecast
-        forecast_item_height = 68
-        separator_height = 8  # Space for separator lines
-        total_item_height = forecast_item_height + separator_height
-        total_forecast_height = (total_item_height * 4) + forecast_item_height  # 4 items with separators + 1 last item
-        
-        # Calculate actual available space from top to footer border
-        footer_border_y = footer_y - 8
-        available_height = footer_border_y  # From y=0 to footer border
-        
-        # Center the forecast in the available space with equal padding top and bottom
-        forecast_start_y = (available_height - total_forecast_height) // 2
+        # Simple fixed spacing that works - 5 items evenly distributed
+        # Total space: 0 to 437 (footer border)
+        # Use 60-380 for forecast (320px / 5 items = 64px per item)
+        forecast_top_padding = 60
+        forecast_bottom_padding = 57  # 437 - 380 = 57 (roughly equal to top)
+        forecast_spacing = 76  # Space between each item
         
         for i, day_data in enumerate(weather_data.get('forecast', [])[:5]):
-            item_y = forecast_start_y + (i * total_item_height)
+            item_y = forecast_top_padding + (i * forecast_spacing)
             
             # Day name
             day_name = self.get_day_name(day_data['date'])
             draw.text((right_margin, item_y), day_name, font=day_font, fill=(40, 40, 40))
             
-            # Weather icon - centered vertically with day name
-            # Get text height to properly center icon
-            day_bbox = draw.textbbox((0, 0), day_name, font=day_font)
-            day_text_height = day_bbox[3] - day_bbox[1]
-            
+            # Weather icon - simple fixed alignment
             icon = self.get_weather_icon(day_data['weather_code'])
-            icon_bbox = draw.textbbox((0, 0), icon, font=forecast_icon_font)
-            icon_height = icon_bbox[3] - icon_bbox[1]
-            
-            # Center icon with text baseline
-            icon_y_offset = (day_text_height - icon_height) // 2
-            draw.text((right_margin + 50, item_y + icon_y_offset), icon, font=forecast_icon_font, fill='black')
+            draw.text((right_margin + 50, item_y - 3), icon, font=forecast_icon_font, fill='black')
             
             # High/Low temps (aligned with day name)
             high_temp = f"{day_data['temp_max']}°"
             low_temp = f"{day_data['temp_min']}°"
-            draw.text((right_margin + 105, item_y + 1), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
-            draw.text((right_margin + 160, item_y + 1), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
+            draw.text((right_margin + 105, item_y), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
+            draw.text((right_margin + 160, item_y), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
             
             # Separator line (except last item)
             if i < 4:
-                sep_y = item_y + forecast_item_height
+                sep_y = item_y + 58
                 draw.line([(right_margin, sep_y), (col3_x + col3_width - 15, sep_y)], fill=(220, 220, 220), width=1)
         
         # ============ FOOTER ============
