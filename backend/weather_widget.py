@@ -308,8 +308,11 @@ class WeatherWidget:
         
         # ============ RIGHT SECTION (5-DAY FORECAST STACKED) ============
         right_margin = col3_x + 15
-        forecast_start_y = 20
-        forecast_item_height = 73
+        
+        # Calculate total height needed for 5 items and center vertically
+        forecast_item_height = 70
+        total_forecast_height = (forecast_item_height * 5)
+        forecast_start_y = (content_height - total_forecast_height) // 2
         
         for i, day_data in enumerate(weather_data.get('forecast', [])[:5]):
             item_y = forecast_start_y + (i * forecast_item_height)
@@ -318,19 +321,19 @@ class WeatherWidget:
             day_name = self.get_day_name(day_data['date'])
             draw.text((right_margin, item_y), day_name, font=day_font, fill=(40, 40, 40))
             
-            # Weather icon (smaller for forecast)
+            # Weather icon (aligned with day name vertically)
             icon = self.get_weather_icon(day_data['weather_code'])
-            draw.text((right_margin + 45, item_y), icon, font=forecast_icon_font, fill='black')
+            draw.text((right_margin + 50, item_y - 2), icon, font=forecast_icon_font, fill='black')
             
-            # High/Low temps
+            # High/Low temps (aligned with day name)
             high_temp = f"{day_data['temp_max']}°"
             low_temp = f"{day_data['temp_min']}°"
-            draw.text((right_margin + 100, item_y + 3), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
-            draw.text((right_margin + 155, item_y + 3), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
+            draw.text((right_margin + 105, item_y + 2), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
+            draw.text((right_margin + 160, item_y + 2), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
             
             # Separator line (except last item)
             if i < 4:
-                sep_y = item_y + forecast_item_height - 5
+                sep_y = item_y + forecast_item_height - 10
                 draw.line([(right_margin, sep_y), (col3_x + col3_width - 15, sep_y)], fill=(220, 220, 220), width=1)
         
         # ============ FOOTER ============
