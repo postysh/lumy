@@ -21,12 +21,19 @@ logger = logging.getLogger(__name__)
 
 def generate_registration_code():
     """
-    Generate a random 6-character registration code
-    Format: XXXXXX (uppercase letters and numbers, no ambiguous chars)
+    Generate a random 7-character registration code
+    Format: ABC-123 (3 letters, dash, 3 numbers)
     """
     # Remove ambiguous characters: 0, O, I, 1, L
-    chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
-    return ''.join(random.choices(chars, k=6))
+    letters = 'ABCDEFGHJKMNPQRSTUVWXYZ'
+    numbers = '23456789'
+    
+    # Generate 3 letters
+    letter_part = ''.join(random.choices(letters, k=3))
+    # Generate 3 numbers
+    number_part = ''.join(random.choices(numbers, k=3))
+    
+    return f"{letter_part}-{number_part}"
 
 def main():
     """Main application entry point"""

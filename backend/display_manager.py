@@ -106,11 +106,18 @@ class DisplayManager:
         draw.text((code_x, code_y), registration_code, font=code_font, fill='black')
         
         # Draw instructions
-        instruction_text = "Go to lumy.io/setup and enter this code"
+        instruction_text = "Visit your dashboard and click 'Add Device'"
         instruction_bbox = draw.textbbox((0, 0), instruction_text, font=instruction_font)
         instruction_width = instruction_bbox[2] - instruction_bbox[0]
         instruction_x = (self.width - instruction_width) // 2
-        draw.text((instruction_x, 400), instruction_text, font=instruction_font, fill='black')
+        draw.text((instruction_x, 380), instruction_text, font=instruction_font, fill='black')
+        
+        # Draw second line of instructions
+        instruction_text2 = "Enter this code to register your display"
+        instruction_bbox2 = draw.textbbox((0, 0), instruction_text2, font=instruction_font)
+        instruction_width2 = instruction_bbox2[2] - instruction_bbox2[0]
+        instruction_x2 = (self.width - instruction_width2) // 2
+        draw.text((instruction_x2, 420), instruction_text2, font=instruction_font, fill='black')
         
         # Display the image
         logger.info("Displaying welcome screen...")
