@@ -33,7 +33,7 @@ class WeatherWidget:
                 'forecast_days': 6  # Get 6 days (today + 5 more)
             }
             
-            response = requests.get(self.api_url, params=params, timeout=10)
+            response = requests.get(self.api_url, params=params, timeout=30)
             
             if response.status_code == 200:
                 data = response.json()
@@ -318,7 +318,7 @@ class WeatherWidget:
             
             # Weather icon
             icon = self.get_weather_icon(day_data['weather_code'])
-            draw.text((right_margin + 45, item_y - 5), icon, font=condition_font, fill='black')
+            draw.text((right_margin + 45, item_y - 5), icon, font=condition_icon_font, fill='black')
             
             # High/Low temps
             high_temp = f"{day_data['temp_max']}°"
