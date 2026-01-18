@@ -85,9 +85,22 @@ class WeatherWidget:
         }
         return weather_codes.get(code, "Unknown")
     
+    def get_temp_color(self, temp):
+        """Get color based on temperature"""
+        if temp <= 32:
+            return (0, 0, 255)  # Blue - freezing
+        elif temp <= 50:
+            return (0, 128, 255)  # Light blue - cold
+        elif temp <= 70:
+            return (0, 200, 0)  # Green - comfortable
+        elif temp <= 85:
+            return (255, 165, 0)  # Orange - warm
+        else:
+            return (255, 0, 0)  # Red - hot
+    
     def render(self, weather_data=None):
         """
-        Render weather widget to image
+        Render weather widget to image with colors
         
         Args:
             weather_data: Optional pre-fetched weather data
@@ -102,85 +115,135 @@ class WeatherWidget:
             # Return error screen
             return self._render_error()
         
-        # Create canvas
-        image = Image.new('RGB', (self.width, self.height), 'white')
+        # Create canvas with light blue background
+        image = Image.new('RGB', (self.width, self.height), (240, 248, 255))  # Alice blue
         draw = ImageDraw.Draw(image)
         
         # Load fonts
         try:
-            title_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 60)
-            location_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 36)
-            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 120)
-            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
-            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 40)
-            desc_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 40)
-            time_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
+            title_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 56)
+            location_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
+            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 140)
+            desc_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 38)
+            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 36)
+            time_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
         except Exception as e:
             logger.warning(f"Could not load fonts: {e}")
             # Fallback to default
             title_font = ImageFont.load_default()
             location_font = ImageFont.load_default()
             temp_font = ImageFont.load_default()
-            label_font = ImageFont.load_default()
-            value_font = ImageFont.load_default()
             desc_font = ImageFont.load_default()
+            value_font = ImageFont.load_default()
             time_font = ImageFont.load_default()
         
-        # Draw header
-        header_text = "Current Weather"
+        # Draw decorative header bar
+        draw.rectangle([0, 0, self.width, 80], fill=(70, 130, 180))  # Steel blue
+        
+        # Draw header text
+        header_text = "☀ Current Weather"
         header_bbox = draw.textbbox((0, 0), header_text, font=title_font)
         header_width = header_bbox[2] - header_bbox[0]
         header_x = (self.width - header_width) // 2
-        draw.text((header_x, 30), header_text, font=title_font, fill='black')
+        draw.text((header_x, 15), header_text, font=title_font, fill='white')
         
-        # Draw location
-        location_text = "St. Paul, Minnesota"
+        # Draw location with pin emoji
+        location_text = "📍 St. Paul, Minnesota"
         location_bbox = draw.textbbox((0, 0), location_text, font=location_font)
         location_width = location_bbox[2] - location_bbox[0]
         location_x = (self.width - location_width) // 2
-        draw.text((location_x, 100), location_text, font=location_font, fill='black')
+        draw.text((location_x, 95), location_text, font=location_font, fill=(50, 50, 50))
         
-        # Draw temperature (large, centered)
-        temp_text = f"{weather_data['temperature']}°F"
+        # Draw temperature with color-coded value
+        temp = weather_data['temperature']
+        temp_color = self.get_temp_color(temp)
+        temp_text = f"{temp}°"
         temp_bbox = draw.textbbox((0, 0), temp_text, font=temp_font)
         temp_width = temp_bbox[2] - temp_bbox[0]
         temp_x = (self.width - temp_width) // 2
-        draw.text((temp_x, 160), temp_text, font=temp_font, fill='black')
         
-        # Draw weather description
+        # Draw temperature with subtle shadow
+        draw.text((temp_x + 3, 148), temp_text, font=temp_font, fill=(200, 200, 200))
+        draw.text((temp_x, 145), temp_text, font=temp_font, fill=temp_color)
+        
+        # Draw weather description with icon
         desc_text = self.get_weather_description(weather_data['weather_code'])
-        desc_bbox = draw.textbbox((0, 0), desc_text, font=desc_font)
+        desc_icon = self.get_weather_icon(weather_data['weather_code'])
+        full_desc = f"{desc_icon} {desc_text}"
+        desc_bbox = draw.textbbox((0, 0), full_desc, font=desc_font)
         desc_width = desc_bbox[2] - desc_bbox[0]
         desc_x = (self.width - desc_width) // 2
-        draw.text((desc_x, 300), desc_text, font=desc_font, fill='black')
+        draw.text((desc_x, 310), full_desc, font=desc_font, fill=(60, 60, 60))
         
-        # Draw additional info (humidity and wind)
-        info_y = 370
+        # Draw info cards
+        card_y = 370
+        card_height = 70
+        card_spacing = 20
         
-        # Humidity
-        humidity_text = f"Humidity: {weather_data['humidity']}%"
+        # Left card - Humidity (blue theme)
+        left_card_x = 50
+        card_width = (self.width - 3 * card_spacing - 100) // 2
+        
+        draw.rectangle(
+            [left_card_x, card_y, left_card_x + card_width, card_y + card_height],
+            fill=(173, 216, 230),  # Light blue
+            outline=(70, 130, 180),
+            width=3
+        )
+        
+        humidity_text = f"💧 {weather_data['humidity']}%"
         humidity_bbox = draw.textbbox((0, 0), humidity_text, font=value_font)
         humidity_width = humidity_bbox[2] - humidity_bbox[0]
-        humidity_x = (self.width // 2) - humidity_width - 40
-        draw.text((humidity_x, info_y), humidity_text, font=value_font, fill='black')
+        humidity_x = left_card_x + (card_width - humidity_width) // 2
+        draw.text((humidity_x, card_y + 20), humidity_text, font=value_font, fill=(25, 25, 112))
         
-        # Wind
-        wind_text = f"Wind: {weather_data['wind_speed']} mph"
-        wind_x = (self.width // 2) + 40
-        draw.text((wind_x, info_y), wind_text, font=value_font, fill='black')
+        # Right card - Wind (green theme)
+        right_card_x = left_card_x + card_width + card_spacing
         
-        # Draw timestamp
+        draw.rectangle(
+            [right_card_x, card_y, right_card_x + card_width, card_y + card_height],
+            fill=(144, 238, 144),  # Light green
+            outline=(34, 139, 34),
+            width=3
+        )
+        
+        wind_text = f"💨 {weather_data['wind_speed']} mph"
+        wind_bbox = draw.textbbox((0, 0), wind_text, font=value_font)
+        wind_width = wind_bbox[2] - wind_bbox[0]
+        wind_x = right_card_x + (card_width - wind_width) // 2
+        draw.text((wind_x, card_y + 20), wind_text, font=value_font, fill=(0, 100, 0))
+        
+        # Draw timestamp footer
         try:
             update_time = datetime.now().strftime('%I:%M %p')
-            time_text = f"Updated: {update_time}"
+            time_text = f"Last updated: {update_time}"
             time_bbox = draw.textbbox((0, 0), time_text, font=time_font)
             time_width = time_bbox[2] - time_bbox[0]
             time_x = (self.width - time_width) // 2
-            draw.text((time_x, 440), time_text, font=time_font, fill='gray')
+            draw.text((time_x, 455), time_text, font=time_font, fill=(100, 100, 100))
         except:
             pass
         
         return image
+    
+    def get_weather_icon(self, code):
+        """Get emoji icon for weather condition"""
+        if code == 0:
+            return "☀️"  # Clear
+        elif code in [1, 2]:
+            return "⛅"  # Partly cloudy
+        elif code == 3:
+            return "☁️"  # Cloudy
+        elif code in [45, 48]:
+            return "🌫️"  # Fog
+        elif code in [51, 53, 55, 61, 63, 65, 80, 81, 82]:
+            return "🌧️"  # Rain
+        elif code in [71, 73, 75, 77, 85, 86]:
+            return "❄️"  # Snow
+        elif code in [95, 96, 99]:
+            return "⛈️"  # Thunderstorm
+        else:
+            return "🌡️"  # Default
     
     def _render_error(self):
         """Render error screen when weather data unavailable"""
