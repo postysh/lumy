@@ -63,21 +63,20 @@ class LumyAPIClient:
             dict with device info if claimed, None if not claimed
         """
         try:
-            # Check registration_codes table via the status endpoint
+            # Check registration endpoint to see if device is claimed
             response = self.session.get(
-                f'{self.base_url}/api/devices/{device_id}/status',
-                headers={'Authorization': f'Bearer {self.api_key}'},
+                f'{self.base_url}/api/devices/{device_id}/registration',
                 timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
-                if data.get('is_claimed'):
+                if data.get('registered'):
                     logger.info(f"Device {device_id} has been claimed!")
                     return data
                 return None
             else:
-                logger.debug(f"Status check: {response.status_code}")
+                logger.debug(f"Registration check: {response.status_code}")
                 return None
                 
         except Exception as e:
@@ -97,7 +96,6 @@ class LumyAPIClient:
         try:
             response = self.session.get(
                 f'{self.base_url}/api/devices/{device_id}/config',
-                headers={'Authorization': f'Bearer {self.api_key}'},
                 timeout=10
             )
             
@@ -126,8 +124,12 @@ class LumyAPIClient:
         try:
             response = self.session.post(
                 f'{self.base_url}/api/devices/{device_id}/status',
-                headers={'Authorization': f'Bearer {self.api_key}'},
-                json={'status': 'online'},
+                json={
+                    'status': 'online',
+                    'last_refresh': None,
+                    'widgets': {},
+                    'system': {}
+                },
                 timeout=10
             )
             

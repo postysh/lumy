@@ -80,8 +80,10 @@ def main():
             # Check if claimed
             status = api_client.check_claim_status(device_id)
             
-            if status and status.get('is_claimed'):
+            if status and status.get('registered'):
                 logger.info("Device has been claimed!")
+                logger.info(f"  User ID: {status.get('user_id')}")
+                logger.info(f"  Device name: {status.get('device_name')}")
                 claimed = True
                 break
             
