@@ -14,7 +14,7 @@ if os.path.exists(env_file):
                 os.environ.setdefault(key.strip(), value.strip())
 
 # API Configuration
-API_BASE_URL = os.getenv('LUMY_API_URL', 'https://lumy-hzo8z4iqa-postysh.vercel.app')
+API_BASE_URL = os.getenv('LUMY_API_URL', 'lumy-beta.vercel.app')
 API_KEY = os.getenv('LUMY_API_KEY', 'ZgIj4BaD25SyRVeQ9j0oh3ebpp0tQtgv')
 
 # Device Configuration
