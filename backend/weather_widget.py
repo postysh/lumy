@@ -194,10 +194,11 @@ class WeatherWidget:
             condition_desc_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
             later_label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
             later_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
-            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 100)
-            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
-            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
+            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 130)  # Bigger temp
+            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
+            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 30)
             day_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 20)
+            forecast_icon_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 28)  # Smaller icons
             forecast_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18)
             footer_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
         except Exception as e:
@@ -211,6 +212,7 @@ class WeatherWidget:
             label_font = ImageFont.load_default()
             value_font = ImageFont.load_default()
             day_font = ImageFont.load_default()
+            forecast_icon_font = ImageFont.load_default()
             forecast_temp_font = ImageFont.load_default()
             footer_font = ImageFont.load_default()
         
@@ -275,8 +277,8 @@ class WeatherWidget:
         temp_x = center_x - (temp_width // 2)
         draw.text((temp_x, 20), temp_text, font=temp_font, fill=temp_color)
         
-        # UV and Precipitation at bottom of center
-        uv_precip_y = content_height - 120
+        # UV and Precipitation at bottom of center (higher up to avoid footer)
+        uv_precip_y = content_height - 140
         
         # UV Index
         uv_text = "UV Index"
@@ -289,7 +291,7 @@ class WeatherWidget:
         uv_value_bbox = draw.textbbox((0, 0), uv_value, font=value_font)
         uv_value_width = uv_value_bbox[2] - uv_value_bbox[0]
         uv_value_x = center_x - (uv_value_width // 2)
-        draw.text((uv_value_x, uv_precip_y + 30), uv_value, font=value_font, fill=(255, 140, 0))
+        draw.text((uv_value_x, uv_precip_y + 28), uv_value, font=value_font, fill=(255, 140, 0))
         
         # Precipitation
         precip_text = "Precipitation"
@@ -297,12 +299,12 @@ class WeatherWidget:
         precip_bbox = draw.textbbox((0, 0), precip_text, font=label_font)
         precip_text_width = precip_bbox[2] - precip_bbox[0]
         precip_x = center_x - (precip_text_width // 2)
-        draw.text((precip_x, uv_precip_y + 75), precip_text, font=label_font, fill=(100, 100, 100))
+        draw.text((precip_x, uv_precip_y + 68), precip_text, font=label_font, fill=(100, 100, 100))
         
         precip_value_bbox = draw.textbbox((0, 0), precip_value, font=value_font)
         precip_value_width = precip_value_bbox[2] - precip_value_bbox[0]
         precip_value_x = center_x - (precip_value_width // 2)
-        draw.text((precip_value_x, uv_precip_y + 105), precip_value, font=value_font, fill=(70, 130, 180))
+        draw.text((precip_value_x, uv_precip_y + 96), precip_value, font=value_font, fill=(70, 130, 180))
         
         # ============ RIGHT SECTION (5-DAY FORECAST STACKED) ============
         right_margin = col3_x + 15
@@ -316,9 +318,9 @@ class WeatherWidget:
             day_name = self.get_day_name(day_data['date'])
             draw.text((right_margin, item_y), day_name, font=day_font, fill=(40, 40, 40))
             
-            # Weather icon
+            # Weather icon (smaller for forecast)
             icon = self.get_weather_icon(day_data['weather_code'])
-            draw.text((right_margin + 45, item_y - 5), icon, font=condition_icon_font, fill='black')
+            draw.text((right_margin + 45, item_y), icon, font=forecast_icon_font, fill='black')
             
             # High/Low temps
             high_temp = f"{day_data['temp_max']}°"
@@ -332,22 +334,23 @@ class WeatherWidget:
                 draw.line([(right_margin, sep_y), (col3_x + col3_width - 15, sep_y)], fill=(220, 220, 220), width=1)
         
         # ============ FOOTER ============
-        # Draw border around footer area
+        # Draw filled footer with border
         footer_border_y = footer_y - 8
         draw.rectangle(
             [0, footer_border_y, self.width, self.height],
-            outline=(180, 180, 180),
+            fill=(70, 130, 180),  # Steel blue background
+            outline=(50, 100, 150),  # Darker blue border
             width=2
         )
         
-        # Bottom left: "Weather"
-        draw.text((20, footer_y), "Weather", font=footer_font, fill=(100, 100, 100))
+        # Bottom left: "Weather" (white text on blue background)
+        draw.text((20, footer_y), "Weather", font=footer_font, fill='white')
         
-        # Bottom right: City name
+        # Bottom right: City name (white text on blue background)
         city_text = "St. Paul, MN"
         city_bbox = draw.textbbox((0, 0), city_text, font=footer_font)
         city_width = city_bbox[2] - city_bbox[0]
-        draw.text((self.width - city_width - 20, footer_y), city_text, font=footer_font, fill=(100, 100, 100))
+        draw.text((self.width - city_width - 20, footer_y), city_text, font=footer_font, fill='white')
         
         return image
     
