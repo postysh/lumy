@@ -20,15 +20,17 @@ class WeatherWidget:
         self.api_url = "https://api.open-meteo.com/v1/forecast"
     
     def fetch_weather(self):
-        """Fetch current weather data from Open-Meteo API"""
+        """Fetch current weather and 5-day forecast from Open-Meteo API"""
         try:
             params = {
                 'latitude': self.lat,
                 'longitude': self.lon,
                 'current': 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
+                'daily': 'weather_code,temperature_2m_max,temperature_2m_min',
                 'temperature_unit': 'fahrenheit',
                 'wind_speed_unit': 'mph',
-                'timezone': 'America/Chicago'
+                'timezone': 'America/Chicago',
+                'forecast_days': 5
             }
             
             response = requests.get(self.api_url, params=params, timeout=10)
@@ -36,6 +38,7 @@ class WeatherWidget:
             if response.status_code == 200:
                 data = response.json()
                 current = data.get('current', {})
+                daily = data.get('daily', {})
                 
                 weather_info = {
                     'temperature': round(current.get('temperature_2m', 0)),
@@ -43,9 +46,25 @@ class WeatherWidget:
                     'wind_speed': round(current.get('wind_speed_10m', 0)),
                     'weather_code': current.get('weather_code', 0),
                     'time': current.get('time', ''),
+                    'forecast': []
                 }
                 
-                logger.info(f"Weather data fetched: {weather_info['temperature']}°F")
+                # Parse 5-day forecast
+                if daily:
+                    times = daily.get('time', [])
+                    codes = daily.get('weather_code', [])
+                    max_temps = daily.get('temperature_2m_max', [])
+                    min_temps = daily.get('temperature_2m_min', [])
+                    
+                    for i in range(min(5, len(times))):
+                        weather_info['forecast'].append({
+                            'date': times[i],
+                            'weather_code': codes[i] if i < len(codes) else 0,
+                            'temp_max': round(max_temps[i]) if i < len(max_temps) else 0,
+                            'temp_min': round(min_temps[i]) if i < len(min_temps) else 0,
+                        })
+                
+                logger.info(f"Weather data fetched: {weather_info['temperature']}°F with {len(weather_info['forecast'])} day forecast")
                 return weather_info
             else:
                 logger.error(f"Weather API error: {response.status_code}")
@@ -98,9 +117,17 @@ class WeatherWidget:
         else:
             return (255, 0, 0)  # Red - hot
     
+    def get_day_name(self, date_str):
+        """Convert date string to day name"""
+        try:
+            date_obj = datetime.fromisoformat(date_str)
+            return date_obj.strftime('%a')  # Mon, Tue, etc.
+        except:
+            return ""
+    
     def render(self, weather_data=None):
         """
-        Render weather widget to image with colors
+        Render weather widget to image with new layout
         
         Args:
             weather_data: Optional pre-fetched weather data
@@ -121,108 +148,127 @@ class WeatherWidget:
         
         # Load fonts
         try:
-            title_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 56)
-            location_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 32)
-            temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 140)
-            desc_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 38)
-            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 36)
-            time_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
+            city_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
+            current_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 72)
+            header_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 36)
+            label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+            value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
+            day_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 24)
+            forecast_temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
         except Exception as e:
             logger.warning(f"Could not load fonts: {e}")
-            # Fallback to default
-            title_font = ImageFont.load_default()
-            location_font = ImageFont.load_default()
-            temp_font = ImageFont.load_default()
-            desc_font = ImageFont.load_default()
+            city_font = ImageFont.load_default()
+            current_temp_font = ImageFont.load_default()
+            header_font = ImageFont.load_default()
+            label_font = ImageFont.load_default()
             value_font = ImageFont.load_default()
-            time_font = ImageFont.load_default()
+            day_font = ImageFont.load_default()
+            forecast_temp_font = ImageFont.load_default()
         
-        # Draw decorative header bar
-        draw.rectangle([0, 0, self.width, 80], fill=(70, 130, 180))  # Steel blue
+        # TOP LEFT: City name and current temperature
+        left_margin = 30
+        top_margin = 30
         
-        # Draw header text
-        header_text = "☀ Current Weather"
-        header_bbox = draw.textbbox((0, 0), header_text, font=title_font)
-        header_width = header_bbox[2] - header_bbox[0]
-        header_x = (self.width - header_width) // 2
-        draw.text((header_x, 15), header_text, font=title_font, fill='white')
+        city_text = "St. Paul"
+        draw.text((left_margin, top_margin), city_text, font=city_font, fill=(40, 40, 40))
         
-        # Draw location with pin emoji
-        location_text = "📍 St. Paul, Minnesota"
-        location_bbox = draw.textbbox((0, 0), location_text, font=location_font)
-        location_width = location_bbox[2] - location_bbox[0]
-        location_x = (self.width - location_width) // 2
-        draw.text((location_x, 95), location_text, font=location_font, fill=(50, 50, 50))
-        
-        # Draw temperature with color-coded value
         temp = weather_data['temperature']
         temp_color = self.get_temp_color(temp)
-        temp_text = f"{temp}°"
-        temp_bbox = draw.textbbox((0, 0), temp_text, font=temp_font)
-        temp_width = temp_bbox[2] - temp_bbox[0]
-        temp_x = (self.width - temp_width) // 2
+        temp_text = f"{temp}°F"
+        draw.text((left_margin, top_margin + 60), temp_text, font=current_temp_font, fill=temp_color)
         
-        # Draw temperature with subtle shadow
-        draw.text((temp_x + 3, 148), temp_text, font=temp_font, fill=(200, 200, 200))
-        draw.text((temp_x, 145), temp_text, font=temp_font, fill=temp_color)
-        
-        # Draw weather description with icon
-        desc_text = self.get_weather_description(weather_data['weather_code'])
+        # Weather description with icon
         desc_icon = self.get_weather_icon(weather_data['weather_code'])
+        desc_text = self.get_weather_description(weather_data['weather_code'])
         full_desc = f"{desc_icon} {desc_text}"
-        desc_bbox = draw.textbbox((0, 0), full_desc, font=desc_font)
-        desc_width = desc_bbox[2] - desc_bbox[0]
-        desc_x = (self.width - desc_width) // 2
-        draw.text((desc_x, 310), full_desc, font=desc_font, fill=(60, 60, 60))
+        draw.text((left_margin, top_margin + 145), full_desc, font=label_font, fill=(60, 60, 60))
         
-        # Draw info cards
-        card_y = 370
-        card_height = 70
-        card_spacing = 20
+        # TOP RIGHT: "Current Weather" header and info cards
+        right_section_x = 420
         
-        # Left card - Humidity (blue theme)
-        left_card_x = 50
-        card_width = (self.width - 3 * card_spacing - 100) // 2
+        header_text = "Current Weather"
+        draw.text((right_section_x, top_margin), header_text, font=header_font, fill=(40, 40, 40))
+        
+        # Humidity card
+        card_y = top_margin + 60
+        card_width = 160
+        card_height = 50
         
         draw.rectangle(
-            [left_card_x, card_y, left_card_x + card_width, card_y + card_height],
-            fill=(173, 216, 230),  # Light blue
+            [right_section_x, card_y, right_section_x + card_width, card_y + card_height],
+            fill=(173, 216, 230),
             outline=(70, 130, 180),
-            width=3
+            width=2
         )
-        
         humidity_text = f"💧 {weather_data['humidity']}%"
-        humidity_bbox = draw.textbbox((0, 0), humidity_text, font=value_font)
-        humidity_width = humidity_bbox[2] - humidity_bbox[0]
-        humidity_x = left_card_x + (card_width - humidity_width) // 2
-        draw.text((humidity_x, card_y + 20), humidity_text, font=value_font, fill=(25, 25, 112))
+        draw.text((right_section_x + 10, card_y + 12), humidity_text, font=value_font, fill=(25, 25, 112))
         
-        # Right card - Wind (green theme)
-        right_card_x = left_card_x + card_width + card_spacing
-        
+        # Wind card
+        wind_card_x = right_section_x + card_width + 20
         draw.rectangle(
-            [right_card_x, card_y, right_card_x + card_width, card_y + card_height],
-            fill=(144, 238, 144),  # Light green
+            [wind_card_x, card_y, wind_card_x + card_width, card_y + card_height],
+            fill=(144, 238, 144),
             outline=(34, 139, 34),
-            width=3
+            width=2
         )
-        
         wind_text = f"💨 {weather_data['wind_speed']} mph"
-        wind_bbox = draw.textbbox((0, 0), wind_text, font=value_font)
-        wind_width = wind_bbox[2] - wind_bbox[0]
-        wind_x = right_card_x + (card_width - wind_width) // 2
-        draw.text((wind_x, card_y + 20), wind_text, font=value_font, fill=(0, 100, 0))
+        draw.text((wind_card_x + 10, card_y + 12), wind_text, font=value_font, fill=(0, 100, 0))
         
-        # Draw timestamp footer
-        try:
-            update_time = datetime.now().strftime('%I:%M %p')
-            time_text = f"Last updated: {update_time}"
-            time_bbox = draw.textbbox((0, 0), time_text, font=time_font)
-            time_width = time_bbox[2] - time_bbox[0]
-            time_x = (self.width - time_width) // 2
-            draw.text((time_x, 455), time_text, font=time_font, fill=(100, 100, 100))
-        except:
-            pass
+        # BOTTOM: 5-day forecast
+        forecast_y = 240
+        
+        # Draw separator line
+        draw.line([(20, forecast_y - 20), (self.width - 20, forecast_y - 20)], fill=(180, 180, 180), width=2)
+        
+        # Forecast title
+        forecast_title = "5-Day Forecast"
+        draw.text((30, forecast_y), forecast_title, font=header_font, fill=(40, 40, 40))
+        
+        # Draw forecast cards
+        forecast_start_y = forecast_y + 55
+        card_height = 160
+        card_spacing = 10
+        total_spacing = card_spacing * 4
+        card_width = (self.width - 60 - total_spacing) // 5
+        
+        for i, day_data in enumerate(weather_data.get('forecast', [])[:5]):
+            card_x = 30 + i * (card_width + card_spacing)
+            
+            # Card background
+            draw.rectangle(
+                [card_x, forecast_start_y, card_x + card_width, forecast_start_y + card_height],
+                fill='white',
+                outline=(180, 180, 180),
+                width=2
+            )
+            
+            # Day name
+            day_name = self.get_day_name(day_data['date'])
+            day_bbox = draw.textbbox((0, 0), day_name, font=day_font)
+            day_width = day_bbox[2] - day_bbox[0]
+            day_x = card_x + (card_width - day_width) // 2
+            draw.text((day_x, forecast_start_y + 10), day_name, font=day_font, fill=(40, 40, 40))
+            
+            # Weather icon
+            icon = self.get_weather_icon(day_data['weather_code'])
+            icon_bbox = draw.textbbox((0, 0), icon, font=header_font)
+            icon_width = icon_bbox[2] - icon_bbox[0]
+            icon_x = card_x + (card_width - icon_width) // 2
+            draw.text((icon_x, forecast_start_y + 45), icon, font=header_font, fill='black')
+            
+            # High temp
+            high_temp = f"{day_data['temp_max']}°"
+            high_bbox = draw.textbbox((0, 0), high_temp, font=forecast_temp_font)
+            high_width = high_bbox[2] - high_bbox[0]
+            high_x = card_x + (card_width - high_width) // 2
+            draw.text((high_x, forecast_start_y + 100), high_temp, font=forecast_temp_font, fill=(255, 69, 0))
+            
+            # Low temp
+            low_temp = f"{day_data['temp_min']}°"
+            low_bbox = draw.textbbox((0, 0), low_temp, font=forecast_temp_font)
+            low_width = low_bbox[2] - low_bbox[0]
+            low_x = card_x + (card_width - low_width) // 2
+            draw.text((low_x, forecast_start_y + 125), low_temp, font=forecast_temp_font, fill=(70, 130, 180))
         
         return image
     
