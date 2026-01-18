@@ -51,6 +51,22 @@ fi
 print_header "Lumy Display Setup"
 log_info "This script will set up your Raspberry Pi for the Lumy display"
 
+# Detect the actual user (not root)
+ACTUAL_USER="${SUDO_USER:-$USER}"
+if [ "$ACTUAL_USER" = "root" ]; then
+    log_error "Cannot determine non-root user. Please run with sudo, not as root."
+    exit 1
+fi
+
+ACTUAL_HOME=$(getent passwd "$ACTUAL_USER" | cut -d: -f6)
+log_info "Detected user: $ACTUAL_USER"
+log_info "Home directory: $ACTUAL_HOME"
+
+# Determine script directory and repo location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+log_info "Repository location: $REPO_DIR"
+
 ################################################################################
 # Step 1: Update system
 ################################################################################
@@ -91,7 +107,7 @@ fi
 # Step 4: Download Waveshare library
 ################################################################################
 print_header "Step 4: Setting Up Waveshare Library"
-BACKEND_DIR="/home/pi/lumy"
+BACKEND_DIR="$REPO_DIR/backend"
 LIB_DIR="$BACKEND_DIR/lib"
 
 log_info "Creating library directory: $LIB_DIR"
@@ -116,25 +132,25 @@ log_success "Waveshare library downloaded (total: ~30KB)"
 # Step 5: Install Python dependencies
 ################################################################################
 print_header "Step 5: Installing Python Dependencies"
-if [ -f "/home/pi/lumy/backend/requirements.txt" ]; then
+if [ -f "$BACKEND_DIR/requirements.txt" ]; then
     log_info "Installing Python packages..."
-    pip3 install -r /home/pi/lumy/backend/requirements.txt --break-system-packages
+    pip3 install -r "$BACKEND_DIR/requirements.txt" --break-system-packages
     log_success "Python packages installed"
 else
-    log_warning "requirements.txt not found, skipping Python package installation"
+    log_warning "requirements.txt not found at $BACKEND_DIR/requirements.txt"
 fi
 
 ################################################################################
-# Step 6: Copy backend files
+# Step 6: Set proper permissions
 ################################################################################
 print_header "Step 6: Setting Up Application"
-if [ -d "/home/pi/lumy/backend" ]; then
-    log_info "Copying backend files to $BACKEND_DIR..."
-    cp /home/pi/lumy/backend/*.py "$BACKEND_DIR/" 2>/dev/null || true
-    chown -R pi:pi "$BACKEND_DIR"
-    log_success "Application files copied"
+if [ -d "$BACKEND_DIR" ]; then
+    log_info "Setting proper ownership for $BACKEND_DIR..."
+    chown -R "$ACTUAL_USER:$ACTUAL_USER" "$REPO_DIR"
+    log_success "Permissions set for user: $ACTUAL_USER"
 else
-    log_warning "Backend directory not found"
+    log_error "Backend directory not found at $BACKEND_DIR"
+    exit 1
 fi
 
 ################################################################################
@@ -150,9 +166,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
+User=$ACTUAL_USER
 WorkingDirectory=$BACKEND_DIR
-ExecStart=/usr/bin/python3 $BACKEND_DIR/main.py
+ExecStart=/usr/bin/python3 main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -175,11 +191,15 @@ print_header "Setup Complete!"
 echo ""
 log_success "Lumy display is ready!"
 echo ""
+echo "Configuration:"
+echo "  User: $ACTUAL_USER"
+echo "  Backend directory: $BACKEND_DIR"
+echo "  Repository: $REPO_DIR"
+echo ""
 echo "Next steps:"
-echo "  1. Copy your backend code to: $BACKEND_DIR"
-echo "  2. Start the service: sudo systemctl start lumy"
-echo "  3. Check status: sudo systemctl status lumy"
-echo "  4. View logs: sudo journalctl -u lumy -f"
+echo "  1. Start the service: sudo systemctl start lumy"
+echo "  2. Check status: sudo systemctl status lumy"
+echo "  3. View logs: sudo journalctl -u lumy -f"
 echo ""
 log_info "A reboot is recommended to ensure all changes take effect"
 echo ""
