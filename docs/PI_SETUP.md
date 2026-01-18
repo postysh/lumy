@@ -32,8 +32,8 @@ This guide will help you set up your Raspberry Pi Zero 2 W with the Waveshare 7.
 
 2. **Clone the Lumy repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/lumy.git lumy-repo
-   cd lumy-repo
+   git clone https://github.com/YOUR_USERNAME/lumy.git lumy
+   cd lumy
    ```
 
 3. **Run the installation script:**
@@ -88,7 +88,7 @@ If you prefer to set things up manually:
 
 5. **Copy the Python files:**
    ```bash
-   cp ~/lumy-repo/backend/*.py /home/pi/lumy/
+   cp ~/lumy/backend/*.py /home/pi/lumy/
    ```
 
 6. **Test the display:**
@@ -103,7 +103,7 @@ To test if the display is working:
 
 ```bash
 cd /home/pi/lumy
-python3 ../lumy-repo/scripts/test-display.py
+python3 ../lumy/scripts/test-display.py
 ```
 
 You should see a test pattern with "Lumy Test Display" text.

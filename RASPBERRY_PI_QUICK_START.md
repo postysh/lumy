@@ -35,8 +35,8 @@ On your **Raspberry Pi**, run:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/lumy.git lumy-repo
-cd lumy-repo
+git clone https://github.com/YOUR_USERNAME/lumy.git lumy
+cd lumy
 
 # Run installation script
 sudo bash scripts/install.sh
@@ -141,7 +141,7 @@ python3 main.py
 
 3. **Try manual test:**
    ```bash
-   cd /home/pi/lumy-repo/scripts
+   cd /home/pi/lumy/scripts
    python3 test-display.py
    ```
 

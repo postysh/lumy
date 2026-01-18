@@ -116,9 +116,9 @@ log_success "Waveshare library downloaded (total: ~30KB)"
 # Step 5: Install Python dependencies
 ################################################################################
 print_header "Step 5: Installing Python Dependencies"
-if [ -f "/home/pi/lumy-repo/backend/requirements.txt" ]; then
+if [ -f "/home/pi/lumy/backend/requirements.txt" ]; then
     log_info "Installing Python packages..."
-    pip3 install -r /home/pi/lumy-repo/backend/requirements.txt --break-system-packages
+    pip3 install -r /home/pi/lumy/backend/requirements.txt --break-system-packages
     log_success "Python packages installed"
 else
     log_warning "requirements.txt not found, skipping Python package installation"
@@ -128,9 +128,9 @@ fi
 # Step 6: Copy backend files
 ################################################################################
 print_header "Step 6: Setting Up Application"
-if [ -d "/home/pi/lumy-repo/backend" ]; then
+if [ -d "/home/pi/lumy/backend" ]; then
     log_info "Copying backend files to $BACKEND_DIR..."
-    cp /home/pi/lumy-repo/backend/*.py "$BACKEND_DIR/" 2>/dev/null || true
+    cp /home/pi/lumy/backend/*.py "$BACKEND_DIR/" 2>/dev/null || true
     chown -R pi:pi "$BACKEND_DIR"
     log_success "Application files copied"
 else
