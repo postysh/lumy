@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Monitor } from 'lucide-react'
+import { Monitor, RefreshCw } from 'lucide-react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,8 +16,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { WidgetList } from '@/components/widget-list'
-import { QuickActions } from '@/components/quick-actions'
+import { Button } from "@/components/ui/button"
 
 export default function DeviceDetailPage() {
   const params = useParams()
@@ -26,6 +25,7 @@ export default function DeviceDetailPage() {
   const [device, setDevice] = useState<any>(null)
   const [status, setStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   const fetchDevice = async () => {
     try {
@@ -111,113 +111,10 @@ export default function DeviceDetailPage() {
       </header>
 
       <div className="flex flex-1 flex-col gap-6 p-6">
-        {/* Device Information */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-lg font-semibold mb-4">Device Information</h3>
-          
-          {/* Info grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            {/* Status */}
-            <div>
-              <span className="text-muted-foreground">Status</span>
-              <div className="mt-1">
-                <span className={`inline-flex items-center gap-2 text-sm font-medium ${
-                  device?.is_online ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <span className={`h-2 w-2 rounded-full ${device?.is_online ? 'bg-green-600' : 'bg-red-600'}`} />
-                  {device?.is_online ? 'Online' : 'Offline'}
-                </span>
-                {device?.last_seen && (
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Last update: {new Date(device.last_seen).toLocaleString('en-US', { 
-                      month: 'numeric', 
-                      day: 'numeric', 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })} ago
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Name */}
-            <div>
-              <span className="text-muted-foreground">Name</span>
-              <div className="mt-1 font-medium">{device?.device_name || 'Unknown'}</div>
-            </div>
-
-            {/* Friendly ID / MAC */}
-            <div>
-              <span className="text-muted-foreground">Friendly ID</span>
-              <div className="mt-1 font-medium">
-                {device?.device_id?.substring(device.device_id.length - 6).toUpperCase() || 'Unknown'}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                MAC: {status?.system?.mac_address || 'Unknown'}
-              </div>
-            </div>
-
-            {/* WiFi Signal */}
-            <div>
-              <span className="text-muted-foreground">WiFi Signal</span>
-              <div className="mt-1 font-medium">{status?.system?.wifi_signal || 'Unknown'}</div>
-            </div>
-
-            {/* Firmware */}
-            <div>
-              <span className="text-muted-foreground">Firmware</span>
-              <div className="mt-1 font-medium text-xs leading-relaxed">
-                {status?.system?.firmware || 'Unknown'}
-              </div>
-            </div>
-
-            {/* Timezone */}
-            <div>
-              <span className="text-muted-foreground">Timezone</span>
-              <div className="mt-1 font-medium">{status?.system?.timezone || 'UTC'}</div>
-            </div>
-
-            {/* Device ID */}
-            <div>
-              <span className="text-muted-foreground">Device ID</span>
-              <div className="mt-1 font-mono text-xs">{device?.device_id || deviceId}</div>
-            </div>
-
-            {/* Registered */}
-            <div>
-              <span className="text-muted-foreground">Registered</span>
-              <div className="mt-1 font-medium">
-                {device?.registered_at ? new Date(device.registered_at).toLocaleDateString('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) : 'Unknown'}
-              </div>
-            </div>
-
-            {/* Refresh Info */}
-            <div>
-              <span className="text-muted-foreground">Refresh Info</span>
-              <div className="mt-1 font-medium">Every 60 seconds</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                Next update: {device?.last_seen ? (() => {
-                  const lastSeen = new Date(device.last_seen);
-                  const nextUpdate = new Date(lastSeen.getTime() + 60000);
-                  return nextUpdate.toLocaleString('en-US', { 
-                    month: 'numeric', 
-                    day: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  });
-                })() : 'Unknown'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Display Preview */}
-        {device?.display_preview && (
-          <div className="mx-auto w-full max-w-4xl">
+        {/* Two-column layout: Display on left, Info on right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column: Display Preview */}
+          {device?.display_preview && (
             <div className="rounded-lg border bg-card overflow-hidden">
               <div className="bg-muted/50 px-4 py-3 border-b">
                 <h3 className="text-base font-semibold flex items-center gap-2">
@@ -233,14 +130,175 @@ export default function DeviceDetailPage() {
                 />
               </div>
             </div>
+          )}
+
+          {/* Right Column: Device Info and System Status */}
+          <div className="flex flex-col gap-6">
+            {/* Device Information */}
+            <div className="rounded-lg border bg-card p-6">
+              <h3 className="text-lg font-semibold mb-4">Device Information</h3>
+              
+              {/* Info grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                {/* Status */}
+                <div>
+                  <span className="text-muted-foreground">Status</span>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center gap-2 text-sm font-medium ${
+                      device?.is_online ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      <span className={`h-2 w-2 rounded-full ${device?.is_online ? 'bg-green-600' : 'bg-red-600'}`} />
+                      {device?.is_online ? 'Online' : 'Offline'}
+                    </span>
+                    {device?.last_seen && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Last update: {new Date(device.last_seen).toLocaleString('en-US', { 
+                          month: 'numeric', 
+                          day: 'numeric', 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })} ago
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <span className="text-muted-foreground">Name</span>
+                  <div className="mt-1 font-medium">{device?.device_name || 'Unknown'}</div>
+                </div>
+
+                {/* WiFi Signal */}
+                <div>
+                  <span className="text-muted-foreground">WiFi Signal</span>
+                  <div className="mt-1 font-medium">{status?.system?.wifi_signal || 'Unknown'}</div>
+                </div>
+
+                {/* Firmware */}
+                <div>
+                  <span className="text-muted-foreground">Firmware</span>
+                  <div className="mt-1 font-medium text-xs leading-relaxed">
+                    {status?.system?.firmware || 'Unknown'}
+                  </div>
+                </div>
+
+                {/* Timezone */}
+                <div>
+                  <span className="text-muted-foreground">Timezone</span>
+                  <div className="mt-1 font-medium">{status?.system?.timezone || 'UTC'}</div>
+                </div>
+
+                {/* Device ID */}
+                <div>
+                  <span className="text-muted-foreground">Device ID</span>
+                  <div className="mt-1 font-mono text-xs">{device?.device_id || deviceId}</div>
+                </div>
+
+                {/* Registered */}
+                <div>
+                  <span className="text-muted-foreground">Registered</span>
+                  <div className="mt-1 font-medium">
+                    {device?.registered_at ? new Date(device.registered_at).toLocaleDateString('en-US', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      year: 'numeric'
+                    }) : 'Unknown'}
+                  </div>
+                </div>
+
+                {/* Refresh Info */}
+                <div>
+                  <span className="text-muted-foreground">Refresh Info</span>
+                  <div className="mt-1 font-medium">Every 60 seconds</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Next update: {device?.last_seen ? (() => {
+                      const lastSeen = new Date(device.last_seen);
+                      const nextUpdate = new Date(lastSeen.getTime() + 60000);
+                      return nextUpdate.toLocaleString('en-US', { 
+                        month: 'numeric', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      });
+                    })() : 'Unknown'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* System Status */}
+            <div className="rounded-lg border bg-card p-6">
+              <h3 className="text-lg font-semibold mb-4">System Status</h3>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+                {/* CPU Temperature */}
+                <div>
+                  <span className="text-muted-foreground">CPU Temperature</span>
+                  <div className="mt-1 font-medium text-lg">
+                    {status?.system?.cpu_temp ? `${status.system.cpu_temp}°C` : 'N/A'}
+                  </div>
+                </div>
+
+                {/* Memory Usage */}
+                <div>
+                  <span className="text-muted-foreground">Memory Usage</span>
+                  <div className="mt-1 font-medium text-lg">
+                    {status?.system?.memory_usage ? `${status.system.memory_usage}%` : 'N/A'}
+                  </div>
+                </div>
+
+                {/* Uptime */}
+                <div>
+                  <span className="text-muted-foreground">Uptime</span>
+                  <div className="mt-1 font-medium text-lg">
+                    {status?.system?.uptime ? (() => {
+                      const days = Math.floor(status.system.uptime / 86400);
+                      const hours = Math.floor((status.system.uptime % 86400) / 3600);
+                      return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                    })() : 'N/A'}
+                  </div>
+                </div>
+
+                {/* MAC Address */}
+                <div>
+                  <span className="text-muted-foreground">MAC Address</span>
+                  <div className="mt-1 font-mono text-xs">
+                    {status?.system?.mac_address || 'Unknown'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="pt-4 border-t">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="justify-start gap-2"
+                    onClick={async () => {
+                      setRefreshing(true)
+                      await fetchDevice()
+                      await fetchStatus()
+                      setRefreshing(false)
+                    }}
+                    disabled={refreshing}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    Refresh Status
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="justify-start gap-2"
+                    onClick={() => alert('Display refreshes automatically every 60 seconds. Cloud commands coming soon!')}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Auto-Refresh: 60s
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <QuickActions onRefresh={fetchStatus} />
-
-        {/* Widget Management */}
-        <WidgetList widgets={status?.widgets || {}} />
+        </div>
       </div>
     </SidebarInset>
   )
