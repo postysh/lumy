@@ -11,6 +11,7 @@ import random
 from display_manager import DisplayManager
 from device_manager import DeviceManager
 from api_client import LumyAPIClient
+from weather_widget import WeatherWidget
 import config
 
 logging.basicConfig(
@@ -105,14 +106,26 @@ def main():
         if device_config:
             logger.info("Configuration received:")
             logger.info(f"  Widgets: {len(device_config.get('widgets', []))}")
-            logger.info("  TODO: Implement widget rendering")
-            # TODO: Render widgets based on config
         else:
             logger.warning("Could not fetch configuration")
         
-        # Main loop: Send heartbeats and refresh config
+        # Initialize weather widget
+        logger.info("Initializing weather widget...")
+        weather = WeatherWidget(config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
+        
+        # Display weather widget
+        logger.info("Rendering weather widget...")
+        weather_image = weather.render()
+        if weather_image:
+            display.epd.display(display.epd.getbuffer(weather_image))
+            logger.info("Weather widget displayed")
+        else:
+            logger.error("Failed to render weather widget")
+        
+        # Main loop: Send heartbeats and refresh weather/config
         logger.info("Entering main loop...")
         last_heartbeat = time.time()
+        last_weather_refresh = time.time()
         last_config_refresh = time.time()
         
         while True:
@@ -123,16 +136,24 @@ def main():
                 api_client.send_heartbeat(device_id)
                 last_heartbeat = now
             
+            # Refresh weather every 10 minutes
+            if now - last_weather_refresh >= 600:
+                logger.info("Refreshing weather...")
+                weather_image = weather.render()
+                if weather_image:
+                    display.epd.display(display.epd.getbuffer(weather_image))
+                    logger.info("Weather updated")
+                last_weather_refresh = now
+            
             # Refresh config every 5 minutes
             if now - last_config_refresh >= config.CONFIG_REFRESH_INTERVAL:
                 logger.info("Refreshing configuration...")
                 device_config = api_client.get_config(device_id)
                 if device_config:
                     logger.info("Configuration updated")
-                    # TODO: Update widgets based on new config
                 last_config_refresh = now
             
-            time.sleep(10)
+            time.sleep(30)
     
     except KeyboardInterrupt:
         logger.info("\nShutting down gracefully...")
