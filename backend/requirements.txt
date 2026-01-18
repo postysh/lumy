@@ -1,9 +1,8 @@
-# All core dependencies are installed via apt-get as system packages:
+# Core dependencies installed via apt-get as system packages:
 # - python3-pil (Pillow)
 # - python3-rpi.gpio (RPi.GPIO)
 # - python3-spidev (spidev)
 # - python3-numpy
 
-# Additional packages (if needed in the future)
-# requests
-# python-dotenv
+# Additional packages needed for API communication
+requests>=2.31.0

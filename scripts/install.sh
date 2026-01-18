@@ -154,9 +154,38 @@ else
 fi
 
 ################################################################################
-# Step 7: Create systemd service
+# Step 7: Configure API settings
 ################################################################################
-print_header "Step 7: Creating System Service"
+print_header "Step 7: Configuring API Connection"
+ENV_FILE="$BACKEND_DIR/.env"
+
+if [ ! -f "$ENV_FILE" ]; then
+    log_info "Creating environment configuration..."
+    echo ""
+    echo "Enter your Lumy dashboard URL (e.g., https://your-app.vercel.app):"
+    read -p "> " API_URL
+    
+    echo "Enter your Lumy API key (must match LUMY_API_KEY in Vercel):"
+    read -p "> " API_KEY
+    
+    # Create .env file
+    cat > "$ENV_FILE" <<EOF
+# Lumy Backend Configuration
+LUMY_API_URL=$API_URL
+LUMY_API_KEY=$API_KEY
+EOF
+    
+    chown "$ACTUAL_USER:$ACTUAL_USER" "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    log_success "Environment configuration saved"
+else
+    log_info "Environment configuration already exists at $ENV_FILE"
+fi
+
+################################################################################
+# Step 8: Create systemd service
+################################################################################
+print_header "Step 8: Creating System Service"
 log_info "Creating lumy.service..."
 
 cat > /etc/systemd/system/lumy.service <<EOF
@@ -168,6 +197,7 @@ After=network.target
 Type=simple
 User=$ACTUAL_USER
 WorkingDirectory=$BACKEND_DIR
+EnvironmentFile=$ENV_FILE
 ExecStart=/usr/bin/python3 main.py
 Restart=always
 RestartSec=10
