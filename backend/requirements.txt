@@ -1,5 +1,9 @@
-Pillow==10.1.0
-RPi.GPIO==0.7.1
-spidev==3.6
-requests==2.31.0
-python-dotenv==1.0.0
+# All core dependencies are installed via apt-get as system packages:
+# - python3-pil (Pillow)
+# - python3-rpi.gpio (RPi.GPIO)
+# - python3-spidev (spidev)
+# - python3-numpy
+
+# Additional packages (if needed in the future)
+# requests
+# python-dotenv
