@@ -190,8 +190,10 @@ class WeatherWidget:
         
         # Load fonts
         try:
-            condition_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 42)
-            later_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+            condition_icon_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 80)
+            condition_desc_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
+            later_label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
+            later_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
             temp_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 100)
             label_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 24)
             value_font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
@@ -201,7 +203,9 @@ class WeatherWidget:
         except Exception as e:
             logger.warning(f"Could not load fonts: {e}")
             # Fallback
-            condition_font = ImageFont.load_default()
+            condition_icon_font = ImageFont.load_default()
+            condition_desc_font = ImageFont.load_default()
+            later_label_font = ImageFont.load_default()
             later_font = ImageFont.load_default()
             temp_font = ImageFont.load_default()
             label_font = ImageFont.load_default()
@@ -226,22 +230,38 @@ class WeatherWidget:
         self.draw_dotted_line(draw, col3_x, 0, footer_y)
         
         # ============ LEFT SECTION ============
-        left_margin = 20
+        left_center = col1_width // 2
         
-        # Current condition at top
+        # Current condition at top - CENTERED
         desc_text = self.get_weather_description(weather_data['weather_code'])
         desc_icon = self.get_weather_icon(weather_data['weather_code'])
         
-        # Wrap text if too long
-        condition_y = 30
-        draw.text((left_margin, condition_y), desc_icon, font=condition_font, fill='black')
-        draw.text((left_margin, condition_y + 50), desc_text, font=condition_font, fill=(40, 40, 40))
+        # Big centered icon
+        condition_y = 40
+        icon_bbox = draw.textbbox((0, 0), desc_icon, font=condition_icon_font)
+        icon_width = icon_bbox[2] - icon_bbox[0]
+        icon_x = left_center - (icon_width // 2)
+        draw.text((icon_x, condition_y), desc_icon, font=condition_icon_font, fill='black')
         
-        # "Later" forecast at bottom of left section
-        later_y = content_height - 100
-        draw.text((left_margin, later_y), "Later:", font=label_font, fill=(100, 100, 100))
+        # Centered description below icon
+        desc_bbox = draw.textbbox((0, 0), desc_text, font=condition_desc_font)
+        desc_width = desc_bbox[2] - desc_bbox[0]
+        desc_x = left_center - (desc_width // 2)
+        draw.text((desc_x, condition_y + 100), desc_text, font=condition_desc_font, fill=(40, 40, 40))
+        
+        # "Later" forecast at bottom of left section - smaller text
+        later_y = content_height - 80
+        later_label = "Later:"
+        later_label_bbox = draw.textbbox((0, 0), later_label, font=later_label_font)
+        later_label_width = later_label_bbox[2] - later_label_bbox[0]
+        later_label_x = left_center - (later_label_width // 2)
+        draw.text((later_label_x, later_y), later_label, font=later_label_font, fill=(100, 100, 100))
+        
         later_forecast = self.get_later_forecast(weather_data['weather_code'])
-        draw.text((left_margin, later_y + 35), later_forecast, font=later_font, fill=(60, 60, 60))
+        later_bbox = draw.textbbox((0, 0), later_forecast, font=later_font)
+        later_width = later_bbox[2] - later_bbox[0]
+        later_x = left_center - (later_width // 2)
+        draw.text((later_x, later_y + 28), later_forecast, font=later_font, fill=(60, 60, 60))
         
         # ============ CENTER SECTION ============
         center_x = col2_x + (col2_width // 2)
@@ -312,6 +332,14 @@ class WeatherWidget:
                 draw.line([(right_margin, sep_y), (col3_x + col3_width - 15, sep_y)], fill=(220, 220, 220), width=1)
         
         # ============ FOOTER ============
+        # Draw border around footer area
+        footer_border_y = footer_y - 8
+        draw.rectangle(
+            [0, footer_border_y, self.width, self.height],
+            outline=(180, 180, 180),
+            width=2
+        )
+        
         # Bottom left: "Weather"
         draw.text((20, footer_y), "Weather", font=footer_font, fill=(100, 100, 100))
         
